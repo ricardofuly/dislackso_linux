@@ -296,15 +296,21 @@ autoUpdater.on('download-progress', (p) => pushUpdate({
 }));
 autoUpdater.on('error', (err) => {
   const msg = String((err && err.message) || err);
-  pushUpdate({
-    status: 'error',
-    // A mensagem crua do updater é técnica demais para a tela.
-    error: /ERR_UPDATER_CHANNEL_FILE_NOT_FOUND|404/.test(msg)
-      ? 'Nenhuma versão publicada encontrada no GitHub.'
-      : /net::|ENOTFOUND|EAI_AGAIN|ETIMEDOUT/.test(msg)
-        ? 'Sem conexão com o GitHub. Tente de novo mais tarde.'
-        : msg,
-  });
+  // A mensagem crua do updater é técnica demais para a tela.
+  let amigavel = msg;
+  if (/releases\.atom|404/.test(msg)) {
+    // O 404 aqui quase sempre é repositório privado: sem autenticação o
+    // GitHub responde 404 em vez de 403, para não revelar que ele existe.
+    amigavel = 'Não consegui ler os releases no GitHub. Se o repositório for privado, '
+             + 'a atualização automática não funciona — ele precisa ser público.';
+  } else if (/net::|ENOTFOUND|EAI_AGAIN|ETIMEDOUT|ECONNRESET/.test(msg)) {
+    amigavel = 'Sem conexão com o GitHub. Tente de novo mais tarde.';
+  } else if (/sha512|checksum/i.test(msg)) {
+    amigavel = 'O arquivo baixado veio corrompido. Tente de novo.';
+  } else if (/ENOSPC/.test(msg)) {
+    amigavel = 'Sem espaço em disco para baixar a atualização.';
+  }
+  pushUpdate({ status: 'error', error: amigavel });
 });
 
 /* ---------------------------------------------------------------- IPC -- */
