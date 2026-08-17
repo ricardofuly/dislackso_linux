@@ -24,7 +24,7 @@
   <div class="app">
 
     <!-- coluna 1: servidores -->
-    <nav class="rail">
+    <nav class="rail glass">
       <div id="rail-list" class="rail-list"></div>
       <div class="rail-sep"></div>
       <button id="btn-create" class="rail-btn rail-add" title="Criar servidor">
@@ -36,7 +36,7 @@
     </nav>
 
     <!-- coluna 2: canais -->
-    <aside class="sidebar">
+    <aside class="sidebar glass">
       <header class="sidebar-head">
         <span id="guild-name">Selecione um servidor</span>
         <button id="btn-guild-menu" class="icon-btn" title="Opções do servidor">
@@ -46,7 +46,8 @@
 
       <div id="guild-menu" class="popover hidden">
         <button data-act="invite"><span data-icon="link" data-size="16"></span> Convidar amigos</button>
-        <button data-act="newchannel"><span data-icon="plus" data-size="16"></span> Criar sala</button>
+        <button data-act="newtext"><span data-icon="plus" data-size="16"></span> Criar canal de texto</button>
+        <button data-act="newvoice"><span data-icon="plus" data-size="16"></span> Criar sala de voz</button>
         <button data-act="icon"><span data-icon="image" data-size="16"></span> Trocar ícone do servidor</button>
         <button data-act="regen"><span data-icon="refresh" data-size="16"></span> Gerar novo convite</button>
         <hr>
@@ -55,7 +56,9 @@
       </div>
 
       <div class="sidebar-body">
-        <div class="section-label">Salas de voz e tela</div>
+        <div class="section-label">Canais de texto</div>
+        <div id="text-channel-list"></div>
+        <div class="section-label voice-label">Salas de voz e tela</div>
         <div id="channel-list"></div>
       </div>
 
@@ -75,7 +78,7 @@
 
     <!-- coluna 3: palco -->
     <main class="stage">
-      <header class="stage-head">
+      <header class="stage-head glass">
         <span class="stage-title" id="stage-title">Nenhuma sala</span>
         <span class="stage-conn" id="stage-conn"></span>
       </header>
@@ -92,7 +95,15 @@
         <div id="grid" class="grid"></div>
       </div>
 
-      <div id="controls" class="controls hidden">
+      <section id="text-chat" class="text-chat hidden" aria-label="Canal de texto">
+        <div id="message-list" class="message-list" aria-live="polite"></div>
+        <form id="message-form" class="message-form">
+          <textarea id="message-input" rows="1" maxlength="2000" placeholder="Enviar mensagem"></textarea>
+          <button class="btn btn-primary" type="submit">Enviar</button>
+        </form>
+      </section>
+
+      <div id="controls" class="controls glass hidden">
         <button id="btn-mic" class="ctl" title="Microfone (M)">
           <span class="i" id="ico-mic"></span><span class="ctl-txt">Microfone</span>
         </button>

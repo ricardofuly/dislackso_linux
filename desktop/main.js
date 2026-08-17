@@ -79,6 +79,7 @@ function createWindow() {
     minWidth: 940,
     minHeight: 600,
     show: false,
+    transparent: !!config.transparency,
     backgroundColor: config.transparency ? '#00000000' : '#1a1b1e',
     ...(config.transparency && process.platform === 'win32' ? { backgroundMaterial: 'acrylic' } : {}),
     titleBarStyle: 'hidden',

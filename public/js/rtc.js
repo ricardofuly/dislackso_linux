@@ -593,43 +593,50 @@ class VoiceEngine {
     if (this.local.screenStream) return;
     const q = this.quality;
 
+    const constraints = {
+      video: {
+        width: { ideal: q.w }, height: { ideal: q.h }, frameRate: { ideal: q.fps },
+      },
+      audio: {
+        channelCount: 2, sampleRate: 48000,
+        echoCancellation: false, noiseSuppression: false, autoGainControl: false,
+        suppressLocalAudioPlayback: false,
+      },
+      systemAudio: 'include', surfaceSwitching: 'include', selfBrowserSurface: 'exclude',
+    };
+
     let captured;
     try {
-      captured = await navigator.mediaDevices.getDisplayMedia({
-        video: {
-          width: { ideal: q.w, max: q.w },
-          height: { ideal: q.h, max: q.h },
-          frameRate: { ideal: q.fps, max: q.fps },
-        },
-        audio: {
-          channelCount: 2,
-          sampleRate: 48000,
-          echoCancellation: false,
-          noiseSuppression: false,
-          autoGainControl: false,
-          suppressLocalAudioPlayback: false,
-        },
-        systemAudio: 'include',
-        surfaceSwitching: 'include',
-        selfBrowserSurface: 'exclude',
-      });
+      captured = await navigator.mediaDevices.getDisplayMedia(constraints);
     } catch (err) {
-      if (err.name !== 'NotAllowedError') {
-        this.emit('notice', 'Não foi possível capturar a tela: ' + err.message);
+      // Algumas versões do Chromium/Electron rejeitam hints novos. Uma
+      // segunda tentativa mínima mantém a captura funcionando nesses casos.
+      if (err.name === 'TypeError' || err.name === 'OverconstrainedError') {
+        try { captured = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true }); }
+        catch (fallbackErr) { err = fallbackErr; }
       }
-      return;
+      if (!captured) {
+        const message = err.name === 'NotAllowedError'
+          ? 'Compartilhamento cancelado ou bloqueado. Verifique a permissão de captura de tela do Windows.'
+          : 'Não foi possível capturar a tela: ' + (err.message || err.name);
+        this.emit('notice', message);
+        return;
+      }
     }
 
     const video = captured.getVideoTracks()[0];
+    if (!video) {
+      for (const track of captured.getTracks()) track.stop();
+      this.emit('notice', 'A fonte escolhida não entregou vídeo. Tente outra tela ou janela.');
+      return;
+    }
     video.contentHint = this.contentHint;
     video.addEventListener('ended', () => this.stopScreen());
 
     // No Electron a captura vem do desktopCapturer e ignora parte das
     // constraints iniciais; reforçamos aqui.
     video.applyConstraints({
-      width: { ideal: q.w, max: q.w },
-      height: { ideal: q.h, max: q.h },
-      frameRate: { ideal: q.fps, max: q.fps },
+      width: { ideal: q.w }, height: { ideal: q.h }, frameRate: { ideal: q.fps },
     }).catch(() => {});
 
     for (const a of captured.getAudioTracks()) a.contentHint = 'music';

@@ -112,6 +112,14 @@ npm start
 
 Abra <http://localhost:3000>. Use Chrome ou Edge — o Firefox não captura áudio da tela.
 
+### Nuvem (sem depender do PC de alguém)
+
+Para um grupo de amigos, o projeto já traz uma publicação pronta com **Render + Supabase**:
+o servidor Socket.IO fica no Render e o estado (perfis, servidores, canais e mensagens)
+fica no Postgres do Supabase. O passo a passo, a tabela SQL e as variáveis secretas estão em
+[DEPLOY.md](DEPLOY.md). Depois de publicado, todos usam a mesma URL HTTPS e o desktop a
+guarda como “Continuar no último servidor”.
+
 ---
 
 ## Colocando os amigos dentro
@@ -166,6 +174,8 @@ rota cada conexão está usando.
 | Ação | Onde | Atalho |
 |---|---|---|
 | Criar servidor | **+** na barra da esquerda | |
+| Criar canal de texto ou sala de voz | **⋮** ao lado do nome do servidor | |
+| Abrir um canal de texto | Clicar em `# nome-do-canal` | |
 | Convidar | **⋮** ao lado do nome do servidor | |
 | Entrar na sala | Clicar no nome da sala | |
 | Compartilhar tela | Botão na barra inferior | `S` |

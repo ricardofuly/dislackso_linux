@@ -43,6 +43,7 @@ const DEFAULT_SETTINGS = {
 
   // aplicativo
   autoUpdate: true,
+  feedbackSounds: true,
 
   // anotações
   annotAllow: true,

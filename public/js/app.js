@@ -9,6 +9,8 @@ const S = {
   me: null,
   guilds: [],
   activeGuildId: null,
+  activeTextChannelId: null,
+  messages: new Map(), // guildId/channelId -> mensagens já carregadas
   presence: {},        // guildId -> { channelId: [peerInfo] }
   voice: null,         // { guildId, channelId }
   rejoin: null,        // sala a retomar depois de uma reconexão
@@ -158,18 +160,30 @@ function connect() {
     if (!S.voice || !info) return;
     Voice.addPeer(info);
     toast(`${info.user.name} entrou na sala.`);
+    feedback('join');
   });
 
   socket.on('voice:peerLeft', ({ sid }) => {
+    const peer = Voice.peers.get(sid);
     Voice.removePeer(sid);
     dropAudio(sid);
     Annot.detach(sid);
     if (S.focusId === sid) S.focusId = null;
+    if (peer) toast(`${peer.user.name} saiu da sala.`);
+    feedback('leave');
   });
 
   socket.on('voice:state', ({ sid, state }) => {
     Voice.setPeerState(sid, state);
     maybeAutoFocus(sid, state);
+  });
+
+  socket.on('message:new', ({ guildId, channelId, message }) => {
+    const key = messageKey(guildId, channelId);
+    const list = S.messages.get(key) || [];
+    if (!list.some((m) => m.id === message.id)) S.messages.set(key, [...list, message].slice(-200));
+    if (S.activeGuildId === guildId && S.activeTextChannelId === channelId) renderTextChannel();
+    else feedback('message');
   });
 
   socket.on('rtc:signal', ({ from, data }) => Voice.handleSignal(from, data));
@@ -181,9 +195,15 @@ function maybeAutoFocus(sid, state) {
   if (state.screen && !wasSharing) {
     S.sharingSeen.add(sid);
     if (Settings.get('autoFocus') && !S.focusId) S.focusId = sid;
+    const peer = Voice.peers.get(sid);
+    if (peer) toast(`${peer.user.name} começou a transmitir.`);
+    feedback('screenstart');
   } else if (!state.screen && wasSharing) {
     S.sharingSeen.delete(sid);
     if (S.focusId === sid) S.focusId = null;
+    const peer = Voice.peers.get(sid);
+    if (peer) toast(`${peer.user.name} parou de transmitir.`);
+    feedback('screenstop');
   }
 }
 
@@ -213,6 +233,7 @@ function renderAll() {
   renderChannels();
   renderMe();
   renderStage();
+  renderTextChannel();
 }
 
 function renderRail() {
@@ -229,7 +250,7 @@ function renderRail() {
       const dot = el('span', 'dot', String(live));
       btn.appendChild(dot);
     }
-    btn.onclick = () => { S.activeGuildId = g.id; renderAll(); };
+    btn.onclick = () => { S.activeGuildId = g.id; S.activeTextChannelId = null; renderAll(); };
     list.appendChild(btn);
   }
 }
@@ -243,12 +264,22 @@ function renderChannels() {
   const guild = activeGuild();
   $('#guild-name').textContent = guild ? guild.name : 'Selecione um servidor';
   const list = $('#channel-list');
+  const textList = $('#text-channel-list');
   list.innerHTML = '';
+  textList.innerHTML = '';
   if (!guild) return;
 
   const presence = S.presence[guild.id] || {};
 
-  for (const ch of guild.channels) {
+  for (const ch of guild.channels.filter((channel) => channel.type === 'text')) {
+    const active = S.activeTextChannelId === ch.id;
+    const btn = el('button', 'channel text-channel' + (active ? ' active' : ''));
+    btn.innerHTML = `<span class="text-hash">#</span><span class="channel-name">${esc(ch.name)}</span>`;
+    btn.onclick = () => openTextChannel(guild.id, ch.id);
+    textList.appendChild(btn);
+  }
+
+  for (const ch of guild.channels.filter((channel) => channel.type !== 'text')) {
     const here = presence[ch.id] || [];
     const active = S.voice && S.voice.guildId === guild.id && S.voice.channelId === ch.id;
 
@@ -289,10 +320,19 @@ function renderMe() {
 function renderStage() {
   const guild = activeGuild();
   const inVoice = !!S.voice;
+  const inText = !!S.activeTextChannelId;
 
   $('#controls').classList.toggle('hidden', !inVoice);
-  $('#stage-wrap').classList.toggle('hidden', !inVoice);
-  $('#stage-empty').classList.toggle('hidden', inVoice);
+  $('#stage-wrap').classList.toggle('hidden', !inVoice || inText);
+  $('#stage-empty').classList.toggle('hidden', inVoice || inText);
+  $('#text-chat').classList.toggle('hidden', !inText);
+
+  if (inText) {
+    const channel = activeGuild() && activeGuild().channels.find((c) => c.id === S.activeTextChannelId);
+    $('#stage-title').textContent = channel ? `# ${channel.name}` : 'Canal de texto';
+    $('#stage-conn').textContent = inVoice ? 'Em chamada' : 'Conversa privada';
+    return;
+  }
 
   if (!inVoice) {
     if (!guild) {
@@ -318,6 +358,38 @@ function renderStage() {
 
   renderControls();
   renderStageContent();
+}
+
+function messageKey(guildId, channelId) { return `${guildId}/${channelId}`; }
+
+async function openTextChannel(guildId, channelId) {
+  S.activeGuildId = guildId;
+  S.activeTextChannelId = channelId;
+  const key = messageKey(guildId, channelId);
+  try {
+    // Mesmo que um aviso novo tenha chegado enquanto o canal estava fechado,
+    // recarrega o histórico para não mostrar só a última mensagem.
+    const res = await ask('message:history', { guildId, channelId });
+    S.messages.set(key, res.messages || []);
+  } catch (err) { toast('Não consegui carregar as mensagens: ' + err.message); }
+  renderAll();
+  $('#message-input').focus();
+}
+
+function renderTextChannel() {
+  const box = $('#message-list');
+  if (!box || !S.activeTextChannelId) return;
+  const messages = S.messages.get(messageKey(S.activeGuildId, S.activeTextChannelId)) || [];
+  if (!messages.length) {
+    box.innerHTML = '<div class="message-empty"><b>Comece a conversa</b><span>As mensagens deste canal ficam salvas no servidor.</span></div>';
+    return;
+  }
+  box.innerHTML = messages.map((message) => {
+    const user = message.user || activeGuild()?.members.find((member) => member.id === message.userId) || { name: 'Desconhecido', color: '#5865f2' };
+    const when = new Date(message.createdAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    return `<article class="message"><div>${avatarHTML(user, 'sm')}</div><div class="message-body"><div><b>${esc(user.name)}</b><time>${when}</time></div><p>${esc(message.text).replace(/\n/g, '<br>')}</p></div></article>`;
+  }).join('');
+  requestAnimationFrame(() => { box.scrollTop = box.scrollHeight; });
 }
 
 function renderControls() {
@@ -605,8 +677,15 @@ Voice.on('notice', (msg) => toast(msg, 6000));
 Voice.on('screenstart', () => {
   if (Settings.get('autoFocus') && Settings.get('selfPreview')) S.focusId = 'local';
   renderStageContent();
+  toast('Você começou a transmitir sua tela.');
+  feedback('screenstart');
 });
-Voice.on('screenstop', () => { if (S.focusId === 'local') S.focusId = null; renderStageContent(); });
+Voice.on('screenstop', () => {
+  if (S.focusId === 'local') S.focusId = null;
+  renderStageContent();
+  toast('Você parou de transmitir.');
+  feedback('screenstop');
+});
 
 /* ========================================================= entrar/sair == */
 
@@ -618,6 +697,7 @@ async function joinVoice(guildId, channelId) {
   try {
     const res = await ask('voice:join', { guildId, channelId });
     S.voice = { guildId, channelId };
+    S.activeTextChannelId = null;
     await Voice.start();
     for (const info of res.peers) {
       Voice.addPeer(info);
@@ -629,6 +709,8 @@ async function joinVoice(guildId, channelId) {
     }
     Voice.publishState();
     renderAll();
+    toast('Você entrou na sala.');
+    feedback('join');
   } catch (err) {
     toast('Não foi possível entrar: ' + err.message);
   }
@@ -695,6 +777,21 @@ function wireActions() {
   $('#btn-quality').onclick = () => SettingsUI.open('transmissao');
   $('#btn-stats').onclick = showStats;
 
+  $('#message-form').onsubmit = (event) => {
+    event.preventDefault();
+    const text = $('#message-input').value.trim();
+    if (!text || !S.activeGuildId || !S.activeTextChannelId) return;
+    $('#message-input').value = '';
+    ask('message:send', { guildId: S.activeGuildId, channelId: S.activeTextChannelId, text })
+      .catch((err) => { $('#message-input').value = text; toast('Não consegui enviar: ' + err.message); });
+  };
+  $('#message-input').onkeydown = (event) => {
+    if (event.key === 'Enter' && !event.shiftKey) {
+      event.preventDefault();
+      $('#message-form').requestSubmit();
+    }
+  };
+
   $('#btn-guild-menu').onclick = (e) => {
     e.stopPropagation();
     $('#guild-menu').classList.toggle('hidden');
@@ -757,15 +854,15 @@ function onGuildMenu(e) {
     });
   }
 
-  if (act === 'newchannel') openModal({
-    title: 'Criar sala',
+  if (act === 'newtext' || act === 'newvoice') openModal({
+    title: act === 'newtext' ? 'Criar canal de texto' : 'Criar sala de voz',
     body: `<label for="in-ch">Nome da sala</label>
-           <input id="in-ch" maxlength="32" placeholder="Ex: Sala 2">`,
+           <input id="in-ch" maxlength="32" placeholder="Ex: ${act === 'newtext' ? 'conversa-geral' : 'Sala 2'}">`,
     okText: 'Criar',
     onOk: () => {
       const name = $('#in-ch').value.trim();
       if (!name) return false;
-      ask('channel:create', { guildId: guild.id, name })
+      ask('channel:create', { guildId: guild.id, name, type: act === 'newtext' ? 'text' : 'voice' })
         .then(({ guild: g }) => {
           const i = S.guilds.findIndex((x) => x.id === g.id);
           if (i !== -1) S.guilds[i] = g;

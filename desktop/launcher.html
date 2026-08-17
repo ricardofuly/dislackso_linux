@@ -19,6 +19,10 @@
   .brand { display: flex; align-items: center; gap: 12px; margin-bottom: 4px; }
   .brand h1 { font-size: 26px; color: #fff; letter-spacing: -.01em; }
   .sub { color: #a8adb5; margin-bottom: 28px; font-size: 14px; }
+  .recent { margin: 0 0 18px; padding: 13px 14px; border-radius: 12px; display:flex; align-items:center; gap:12px;
+            background:rgba(88,101,242,.14); border:1px solid rgba(124,137,255,.32); }
+  .recent .copy { flex:1; min-width:0; } .recent b { color:#fff; display:block; font-size:13px; }
+  .recent span { color:#aeb6ff; display:block; font:12px ui-monospace,Consolas,monospace; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 
   .cards { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
   .card {
@@ -98,6 +102,10 @@
       <h1>DiSlackso</h1>
     </div>
     <p class="sub">Escolha como você quer usar o app.</p>
+    <div id="recent" class="recent hidden">
+      <div class="copy"><b>Continuar no último servidor</b><span id="recent-url"></span></div>
+      <button class="go" id="btn-recent">Entrar</button>
+    </div>
 
     <div class="cards">
       <button class="card" id="card-host">
@@ -163,6 +171,11 @@ let hostInfo = null;
   $('#hw').checked = cfg.hardwareAcceleration !== false;
   $('#tr').checked = !!cfg.transparency;
 
+  if (cfg.url) {
+    $('#recent-url').textContent = cfg.url;
+    show($('#recent'), true);
+  }
+
   const info = await window.desktop.info();
   $('#ver').textContent = `versão ${info.version} · Electron ${info.electron} · dados em ${info.dataDir}`;
 
@@ -170,6 +183,14 @@ let hostInfo = null;
   if (cfg.mode === 'connect') selectMode('connect');
   else if (cfg.mode === 'host') selectMode('host');
 })();
+
+$('#btn-recent').onclick = () => {
+  if (!cfg.url) return;
+  window.desktop.open(cfg.url).catch((err) => {
+    $('#conn-err').textContent = 'Não foi possível abrir: ' + (err.message || err);
+    selectMode('connect'); show($('#conn-err'), true);
+  });
+};
 
 function selectMode(mode) {
   show($('#panel-host'), mode === 'host');

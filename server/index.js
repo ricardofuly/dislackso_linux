@@ -69,6 +69,15 @@ function cleanAssetPath(value) {
   return typeof value === 'string' && /^\/uploads\/[A-Za-z0-9_-]+\.(png|jpg|gif|webp)$/.test(value) ? value : undefined;
 }
 
+function normalizeChannel(channel) {
+  return {
+    id: channel.id || uid(),
+    name: cleanText(channel.name, 32, 'novo-canal'),
+    type: channel.type === 'text' ? 'text' : 'voice',
+    messages: Array.isArray(channel.messages) ? channel.messages.slice(-200) : [],
+  };
+}
+
 /* ============================================================ createServer */
 
 function createServer(options = {}) {
@@ -90,6 +99,56 @@ function createServer(options = {}) {
   }
   db.users = db.users || {};
   db.guilds = db.guilds || {};
+  for (const guild of Object.values(db.guilds)) {
+    guild.channels = (guild.channels || []).map(normalizeChannel);
+  }
+
+  // Opcional: quando as credenciais do Supabase existem, este mesmo banco
+  // JSON é espelhado numa única linha Postgres. Assim o servidor continua
+  // simples, mas perfis, servidores e conversas sobrevivem a redeploys.
+  const supabaseUrl = String(options.supabaseUrl || process.env.SUPABASE_URL || '').replace(/\/$/, '');
+  const supabaseKey = options.supabaseServiceKey || process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+  const supabaseRow = String(options.supabaseRow || process.env.SUPABASE_DB_ROW_ID || 'main');
+  const useSupabase = !!(supabaseUrl && supabaseKey && typeof fetch === 'function');
+
+  async function loadRemoteDb() {
+    if (!useSupabase) return;
+    try {
+      const res = await fetch(`${supabaseUrl}/rest/v1/app_state?id=eq.${encodeURIComponent(supabaseRow)}&select=data`, {
+        headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}` },
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const rows = await res.json();
+      if (rows[0] && rows[0].data && typeof rows[0].data === 'object') {
+        db = rows[0].data;
+        db.users = db.users || {};
+        db.guilds = db.guilds || {};
+        for (const guild of Object.values(db.guilds)) guild.channels = (guild.channels || []).map(normalizeChannel);
+        console.log('[db] estado restaurado do Supabase');
+      }
+    } catch (err) {
+      console.error('[db] Supabase indisponível; usando cópia local:', err.message);
+    }
+  }
+
+  async function saveRemoteDb() {
+    if (!useSupabase) return;
+    try {
+      const res = await fetch(`${supabaseUrl}/rest/v1/app_state?on_conflict=id`, {
+        method: 'POST',
+        headers: {
+          apikey: supabaseKey,
+          Authorization: `Bearer ${supabaseKey}`,
+          'Content-Type': 'application/json',
+          Prefer: 'resolution=merge-duplicates,return=minimal',
+        },
+        body: JSON.stringify({ id: supabaseRow, data: db, updated_at: new Date().toISOString() }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    } catch (err) {
+      console.error('[db] falha ao espelhar no Supabase:', err.message);
+    }
+  }
 
   let saveTimer = null;
   function save() {
@@ -100,6 +159,7 @@ function createServer(options = {}) {
         if (err) return console.error('[db] falha ao gravar:', err.message);
         fs.rename(tmp, DB_FILE, (e) => e && console.error('[db] falha ao trocar:', e.message));
       });
+      saveRemoteDb();
     }, 250);
   }
 
@@ -142,7 +202,7 @@ function createServer(options = {}) {
       ownerId: guild.ownerId,
       invite: guild.invite,
       icon: guild.icon || '',
-      channels: guild.channels,
+      channels: guild.channels.map(({ messages, ...channel }) => channel),
       members: guild.members.map(publicUser),
     };
   }
@@ -338,7 +398,10 @@ function createServer(options = {}) {
         icon: '',
         createdAt: Date.now(),
         members: [s.userId],
-        channels: [{ id: uid(), name: 'Sala Principal' }],
+        channels: [
+          { id: uid(), name: 'geral', type: 'text', messages: [] },
+          { id: uid(), name: 'Sala Principal', type: 'voice', messages: [] },
+        ],
       };
       db.guilds[guild.id] = guild;
       save();
@@ -414,13 +477,14 @@ function createServer(options = {}) {
       pushGuild(guildId);
     }));
 
-    socket.on('channel:create', ({ guildId, name } = {}, cb) => guard(cb, () => {
+    socket.on('channel:create', ({ guildId, name, type = 'voice' } = {}, cb) => guard(cb, () => {
       const s = sessions.get(socket.id);
       const guild = db.guilds[guildId];
       if (!s || !guild) throw new Error('servidor inexistente');
       if (!guild.members.includes(s.userId)) throw new Error('sem acesso');
-      if (guild.channels.length >= 20) throw new Error('Limite de 20 salas.');
-      guild.channels.push({ id: uid(), name: cleanText(name, 32, 'Nova Sala') });
+      if (guild.channels.length >= 40) throw new Error('Limite de 40 canais.');
+      if (!['voice', 'text'].includes(type)) throw new Error('tipo de canal inválido');
+      guild.channels.push({ id: uid(), name: cleanText(name, 32, type === 'text' ? 'novo-texto' : 'Nova Sala'), type, messages: [] });
       save();
       cb({ guild: publicGuild(guild) });
       pushGuild(guildId);
@@ -432,7 +496,7 @@ function createServer(options = {}) {
       const guild = db.guilds[guildId];
       if (!s || !guild) throw new Error('servidor inexistente');
       if (guild.ownerId !== s.userId) throw new Error('Somente o dono pode excluir salas.');
-      if (guild.channels.length <= 1) throw new Error('O servidor precisa de ao menos uma sala.');
+      if (!guild.channels.some((c) => c.id === channelId)) throw new Error('canal inexistente');
       guild.channels = guild.channels.filter((c) => c.id !== channelId);
       save();
       cb({ guild: publicGuild(guild) });
@@ -447,7 +511,7 @@ function createServer(options = {}) {
       const guild = db.guilds[guildId];
       if (!s) throw new Error('nao autenticado');
       if (!guild || !guild.members.includes(s.userId)) throw new Error('sem acesso a este servidor');
-      if (!guild.channels.some((c) => c.id === channelId)) throw new Error('sala inexistente');
+      if (!guild.channels.some((c) => c.id === channelId && c.type !== 'text')) throw new Error('sala de voz inexistente');
 
       leaveVoice(socket);
       const room = voiceRoom(guildId, channelId);
@@ -494,6 +558,32 @@ function createServer(options = {}) {
       io.to(to).emit('rtc:signal', { from: socket.id, data });
     });
 
+    /* --------------------------------------------------------- texto --- */
+
+    socket.on('message:history', ({ guildId, channelId } = {}, cb) => guard(cb, () => {
+      const s = sessions.get(socket.id);
+      const guild = db.guilds[guildId];
+      if (!s || !guild || !guild.members.includes(s.userId)) throw new Error('sem acesso');
+      const channel = guild.channels.find((c) => c.id === channelId && c.type === 'text');
+      if (!channel) throw new Error('canal de texto inexistente');
+      cb({ messages: (channel.messages || []).slice(-100) });
+    }));
+
+    socket.on('message:send', ({ guildId, channelId, text } = {}, cb) => guard(cb, () => {
+      const s = sessions.get(socket.id);
+      const guild = db.guilds[guildId];
+      if (!s || !guild || !guild.members.includes(s.userId)) throw new Error('sem acesso');
+      const channel = guild.channels.find((c) => c.id === channelId && c.type === 'text');
+      if (!channel) throw new Error('canal de texto inexistente');
+      const body = cleanMultiline(text, 2000);
+      if (!body) throw new Error('a mensagem está vazia');
+      const message = { id: uid(), userId: s.userId, text: body, createdAt: Date.now() };
+      channel.messages = (channel.messages || []).concat(message).slice(-200);
+      save();
+      io.to(guildRoom(guildId)).emit('message:new', { guildId, channelId, message: { ...message, user: publicUser(s.userId) } });
+      cb({ message: { ...message, user: publicUser(s.userId) } });
+    }));
+
     /* --------------------------------------------------- anotacoes --- */
 
     // Tracos sao leves (pontos normalizados), entao vao pelo socket mesmo.
@@ -526,7 +616,7 @@ function createServer(options = {}) {
   }
 
   function listen() {
-    return new Promise((resolve, reject) => {
+    return loadRemoteDb().then(() => new Promise((resolve, reject) => {
       server.once('error', reject);
       server.listen(PORT, () => {
         resolve({
@@ -536,7 +626,7 @@ function createServer(options = {}) {
           lan: localAddresses().map((ip) => `${scheme}://${ip}:${PORT}`),
         });
       });
-    });
+    }));
   }
 
   function close() {

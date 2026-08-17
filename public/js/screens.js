@@ -422,6 +422,12 @@ const SettingsUI = {
         }),
       }));
     }
+
+    box.appendChild(row({
+      title: 'Sons de feedback',
+      desc: 'Um toque curto ao entrar/sair de sala e iniciar/parar uma transmissão.',
+      control: switchControl(Settings.get('feedbackSounds') !== false, (v) => Settings.set('feedbackSounds', v)),
+    }));
   },
 
   /* ----------------------------------------------------- transmissão -- */
