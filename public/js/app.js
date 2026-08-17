@@ -253,7 +253,7 @@ function renderChannels() {
     const active = S.voice && S.voice.guildId === guild.id && S.voice.channelId === ch.id;
 
     const btn = el('button', 'channel' + (active ? ' active' : ''));
-    btn.innerHTML = `<span class="channel-ico">&#128266;</span>
+    btn.innerHTML = `<span class="i">${icon('speaker', 17)}</span>
                      <span class="channel-name">${esc(ch.name)}</span>
                      ${here.length ? `<span class="channel-count">${here.length}</span>` : ''}`;
     btn.onclick = () => joinVoice(guild.id, ch.id);
@@ -268,8 +268,8 @@ function renderChannels() {
           ${avatarHTML(p.user, 'sm')}
           <span class="nm">${esc(p.user.name)}${isMe ? ' (você)' : ''}</span>
           <span class="tags">
-            ${p.state && p.state.screen ? '<span class="tag screen">TELA</span>' : ''}
-            ${p.state && !p.state.mic ? '<span class="tag muted">MUDO</span>' : ''}
+            ${p.state && p.state.screen ? `<span class="tag screen" title="Transmitindo">${icon('monitor', 11)}</span>` : ''}
+            ${p.state && !p.state.mic ? `<span class="tag muted" title="Microfone fechado">${icon('micOff', 11)}</span>` : ''}
           </span>`;
         rowEl.onclick = () => showProfile(p.user);
         box.appendChild(rowEl);
@@ -325,13 +325,14 @@ function renderControls() {
   const ptt = Settings.get('micMode') === 'ptt';
   $('#btn-mic').classList.toggle('on', open);
   $('#btn-mic').classList.toggle('off', !open && Voice.micEnabled === false);
-  $('#ico-mic').innerHTML = open ? '&#127908;' : '&#128263;';
+  setIcon($('#ico-mic'), open ? 'mic' : 'micOff', 18);
   $('#btn-mic .ctl-txt').textContent = ptt
     ? (Voice.micEnabled ? 'Aperte ' + teclaNome(Settings.get('pttKey')) : 'Mudo')
     : (open ? 'Microfone' : 'Mudo');
 
   const sharing = Voice.isSharing();
   $('#btn-screen').classList.toggle('live', sharing);
+  setIcon($('#ico-screen'), sharing ? 'screenOff' : 'screenShare', 18);
   $('#txt-screen').textContent = sharing ? 'Parar de transmitir' : 'Compartilhar tela';
   $('#txt-quality').textContent = Voice.quality.label.replace(' ', '');
 }
@@ -359,12 +360,11 @@ function tileFor(id) {
     <div class="tile-badge hidden"></div>
     <div class="tile-bar">
       <span class="tile-name"></span>
-      <span class="spacer"></span>
       <input type="range" min="0" max="100" value="100" title="Volume" class="vol hidden">
-      <button class="pen hidden" title="Rabiscar na tela (P)">&#9998;</button>
-      <button class="pip hidden" title="Janela flutuante">&#9744;</button>
-      <button class="focus" title="Destacar">&#9974;</button>
-      <button class="fs" title="Tela cheia">&#9713;</button>
+      <button class="pen hidden" title="Rabiscar na tela (P)">${icon('pen', 16)}</button>
+      <button class="pip hidden" title="Janela flutuante">${icon('pip', 16)}</button>
+      <button class="focus" title="Destacar">${icon('maximize', 16)}</button>
+      <button class="fs" title="Tela cheia">${icon('expand', 16)}</button>
     </div>`;
 
   const video = node.querySelector('video');
@@ -438,7 +438,9 @@ function paintTile(id, info) {
   badge.textContent = sharing ? (isLocal ? 'TRANSMITINDO' : 'AO VIVO') : '';
 
   node.querySelector('.tile-name').textContent = isLocal ? `${user.name} (você)` : user.name;
-  node.querySelector('.focus').innerHTML = S.focusId === id ? '&#10005;' : '&#9974;';
+  const foco = node.querySelector('.focus');
+  foco.innerHTML = S.focusId === id ? icon('grid', 16) : icon('maximize', 16);
+  foco.title = S.focusId === id ? 'Voltar à grade' : 'Destacar';
 
   // camada de rabisco
   if (sharing && stream) {
@@ -473,7 +475,8 @@ function syncAnnotBars() {
 
 function showUnmute(node, video) {
   if (node.querySelector('.tile-unmute')) return;
-  const btn = el('button', 'tile-unmute', 'Clique para ativar o som');
+  const btn = el('button', 'tile-unmute',
+    `<span class="i">${icon('volume', 20)}</span><span>Clique para ativar o som</span>`);
   btn.onclick = (e) => { e.stopPropagation(); video.play(); btn.remove(); };
   node.appendChild(btn);
 }
@@ -878,6 +881,7 @@ if (navigator.mediaDevices) {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+  hydrateIcons();          // troca os marcadores data-icon do HTML pelos SVGs
   wireModal();
   wireActions();
   wireKeyboard();

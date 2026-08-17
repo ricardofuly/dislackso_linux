@@ -46,9 +46,8 @@ function selectControl(options, value, onChange) {
 }
 
 function rangeControl({ min, max, step, value, format, onInput }) {
-  const wrap = el('div');
-  const out = el('div', null, '');
-  out.style.cssText = 'font-size:12.5px;color:var(--dim);margin-bottom:6px;text-align:right';
+  const wrap = el('div', 'range-wrap');
+  const out = el('div', 'range-value');
   const input = el('input');
   input.type = 'range';
   Object.assign(input, { min, max, step, value });
@@ -57,6 +56,13 @@ function rangeControl({ min, max, step, value, format, onInput }) {
   paint();
   wrap.append(out, input);
   return wrap;
+}
+
+/** Botão com ícone à esquerda do texto. */
+function iconButton(name, label, className = 'btn btn-soft') {
+  const b = el('button', className);
+  b.innerHTML = `<span class="i">${icon(name, 17)}</span><span>${esc(label)}</span>`;
+  return b;
 }
 
 /* ================================================== teste de microfone == */
@@ -150,15 +156,21 @@ const SettingsUI = {
 
     const nav = el('nav', 'set-nav');
     const groups = [
-      ['Usuário', [['conta', 'Minha conta'], ['perfil', 'Perfil']]],
-      ['Aplicativo', [['voz', 'Voz e vídeo'], ['transmissao', 'Transmissão'], ['anotacoes', 'Anotações']]],
-      ['Aparência', [['tema', 'Tema e cores'], ['animacoes', 'Animações']]],
-      ['Sistema', isDesktop() ? [['app', 'Aplicativo'], ['sobre', 'Sobre']] : [['sobre', 'Sobre']]],
+      ['Usuário', [['conta', 'Minha conta', 'user'], ['perfil', 'Perfil', 'image']]],
+      ['Aplicativo', [['voz', 'Voz e vídeo', 'headphones'],
+                      ['transmissao', 'Transmissão', 'screenShare'],
+                      ['anotacoes', 'Anotações', 'pen']]],
+      ['Aparência', [['tema', 'Tema e cores', 'palette'], ['animacoes', 'Animações', 'sparkles']]],
+      ['Sistema', isDesktop()
+        ? [['app', 'Aplicativo', 'monitor'], ['sobre', 'Sobre', 'info']]
+        : [['sobre', 'Sobre', 'info']]],
     ];
     for (const [label, items] of groups) {
       nav.appendChild(el('div', 'grp', esc(label)));
-      for (const [id, name] of items) {
-        const b = el('button', this.section === id ? 'on' : '', esc(name));
+      for (const [id, name, ico] of items) {
+        const b = el('button', this.section === id ? 'on' : '');
+        b.title = name;   // no modo estreito só sobra o ícone
+        b.innerHTML = `<span class="i">${icon(ico, 17)}</span><span>${esc(name)}</span>`;
         b.onclick = () => { this.section = id; MicTest.stop(); this.render(); };
         nav.appendChild(b);
       }
@@ -168,7 +180,7 @@ const SettingsUI = {
     const inner = el('div', 'set-inner');
     body.appendChild(inner);
 
-    const close = el('button', 'set-close', '&#10005;');
+    const close = el('button', 'set-close', icon('x', 18));
     close.title = 'Fechar (Esc)';
     close.onclick = () => this.close();
 
@@ -227,73 +239,68 @@ const SettingsUI = {
     box.appendChild(el('h2', null, 'Perfil'));
     if (!me) return;
 
-    /* avatar */
-    const avaWrap = el('div', 'upload-row');
-    const avaPrev = el('div', 'upload-preview');
-    if (me.avatar) avaPrev.style.backgroundImage = `url('${me.avatar}')`;
-    else { avaPrev.style.background = me.color; avaPrev.textContent = initials(me.name); avaPrev.style.color = '#fff'; avaPrev.style.fontSize = '26px'; }
-
-    const avaBtns = el('div');
-    const pick = el('button', 'btn btn-primary', 'Enviar imagem');
-    pick.onclick = async () => {
-      const dataUrl = await pickImage({ maxBytes: 8 * 1024 * 1024 });
-      if (!dataUrl) return;
-      pick.disabled = true;
-      pick.innerHTML = '<span class="spinner"></span> Enviando…';
-      try {
-        const url = await uploadImage(dataUrl, 'avatar', me.id);
-        await App.updateProfile({ avatar: url });
-        this.render();
-      } catch (err) {
-        toast('Falha ao enviar: ' + err.message);
-        pick.disabled = false;
-        pick.textContent = 'Enviar imagem';
+    /**
+     * Monta o bloco de envio de imagem (avatar ou banner). Os dois são o
+     * mesmo fluxo: prévia, escolher arquivo, enviar, remover.
+     */
+    const uploadBlock = ({ kind, current, maxMB, label, preview }) => {
+      const wrap = el('div', kind === 'avatar' ? 'upload-row' : '');
+      const prev = el('div', 'upload-preview' + (kind === 'banner' ? ' banner' : ''));
+      if (current) prev.style.backgroundImage = `url('${current}')`;
+      else {
+        prev.style.background = preview.bg;
+        prev.textContent = preview.text;
       }
+
+      const actions = el('div', 'upload-actions');
+      if (kind === 'banner') actions.style.marginTop = '10px';
+
+      const send = iconButton('upload', label, 'btn btn-primary');
+      send.onclick = async () => {
+        const dataUrl = await pickImage({ maxBytes: maxMB * 1024 * 1024 });
+        if (!dataUrl) return;
+        send.disabled = true;
+        send.innerHTML = '<span class="spinner"></span><span>Enviando…</span>';
+        try {
+          const url = await uploadImage(dataUrl, kind, me.id);
+          await App.updateProfile({ [kind]: url });
+          this.render();
+        } catch (err) {
+          toast('Falha ao enviar: ' + err.message);
+          send.disabled = false;
+          send.innerHTML = `<span class="i">${icon('upload', 17)}</span><span>${esc(label)}</span>`;
+        }
+      };
+      actions.appendChild(send);
+
+      if (current) {
+        const rm = iconButton('trash', 'Remover', 'btn btn-ghost');
+        rm.onclick = async () => { await App.updateProfile({ [kind]: '' }); this.render(); };
+        actions.appendChild(rm);
+      }
+      wrap.append(prev, actions);
+      return wrap;
     };
-    avaBtns.appendChild(pick);
-    if (me.avatar) {
-      const rm = el('button', 'btn btn-ghost', 'Remover');
-      rm.onclick = async () => { await App.updateProfile({ avatar: '' }); this.render(); };
-      avaBtns.appendChild(rm);
-    }
-    avaWrap.append(avaPrev, avaBtns);
+
     box.appendChild(row({
       title: 'Foto de perfil',
       desc: 'PNG, JPG, WEBP ou GIF animado. Até 8 MB.',
-      control: avaWrap, stack: true,
+      stack: true,
+      control: uploadBlock({
+        kind: 'avatar', current: me.avatar, maxMB: 8, label: 'Enviar imagem',
+        preview: { bg: me.color, text: initials(me.name) },
+      }),
     }));
 
-    /* banner */
-    const banWrap = el('div');
-    const banPrev = el('div', 'upload-preview banner');
-    if (me.banner) banPrev.style.backgroundImage = `url('${me.banner}')`;
-    else { banPrev.style.background = me.accent || me.color; banPrev.textContent = 'sem banner'; }
-    const banBtns = el('div');
-    banBtns.style.marginTop = '10px';
-    const bpick = el('button', 'btn btn-primary', 'Enviar banner');
-    bpick.onclick = async () => {
-      const dataUrl = await pickImage({ maxBytes: 12 * 1024 * 1024 });
-      if (!dataUrl) return;
-      bpick.disabled = true;
-      bpick.innerHTML = '<span class="spinner"></span> Enviando…';
-      try {
-        const url = await uploadImage(dataUrl, 'banner', me.id);
-        await App.updateProfile({ banner: url });
-        this.render();
-      } catch (err) {
-        toast('Falha ao enviar: ' + err.message);
-        bpick.disabled = false;
-        bpick.textContent = 'Enviar banner';
-      }
-    };
-    banBtns.appendChild(bpick);
-    if (me.banner) {
-      const rm = el('button', 'btn btn-ghost', 'Remover');
-      rm.onclick = async () => { await App.updateProfile({ banner: '' }); this.render(); };
-      banBtns.appendChild(rm);
-    }
-    banWrap.append(banPrev, banBtns);
-    box.appendChild(row({ title: 'Banner', desc: 'Aparece atrás da sua foto. Até 12 MB.', control: banWrap, stack: true }));
+    box.appendChild(row({
+      title: 'Banner',
+      desc: 'Aparece atrás da sua foto. Até 12 MB.',
+      stack: true,
+      control: uploadBlock({
+        kind: 'banner', current: me.banner, maxMB: 12, label: 'Enviar banner',
+        preview: { bg: me.accent || me.color, text: 'sem banner' },
+      }),
+    }));
 
     /* cor de destaque do perfil */
     const sw = el('div', 'swatches');
@@ -348,12 +355,15 @@ const SettingsUI = {
     const testWrap = el('div');
     const meter = el('div', 'meter', '<i></i>');
     const bar = meter.querySelector('i');
-    const testBtn = el('button', 'btn btn-soft', 'Testar microfone');
+    const testBtn = iconButton('mic', 'Testar microfone');
     let testing = false;
+    const setLabel = (ico, txt) => {
+      testBtn.innerHTML = `<span class="i">${icon(ico, 17)}</span><span>${esc(txt)}</span>`;
+    };
     testBtn.onclick = async () => {
-      if (testing) { MicTest.stop(); testing = false; testBtn.textContent = 'Testar microfone'; return; }
+      if (testing) { MicTest.stop(); testing = false; setLabel('mic', 'Testar microfone'); return; }
       testing = true;
-      testBtn.textContent = 'Parar teste';
+      setLabel('micOff', 'Parar teste');
       await MicTest.start(bar);
       await this.loadDevices();     // agora os nomes aparecem
     };
@@ -515,8 +525,12 @@ const SettingsUI = {
     const cards = el('div', 'theme-cards');
     for (const t of THEMES) {
       const card = el('button', 'theme-card' + (Settings.get('theme') === t.id ? ' on' : ''));
+      const escolhido = Settings.get('theme') === t.id;
       card.innerHTML = `<div class="prev">${t.colors.map((c) => `<i style="background:${c}"></i>`).join('')}</div>
-                        <div class="nm">${esc(t.name)}</div>`;
+                        <div class="nm">
+                          <span class="i">${escolhido ? icon('check', 15) : ''}</span>
+                          <span>${esc(t.name)}</span>
+                        </div>`;
       card.onclick = () => { Settings.set('theme', t.id); this.render(); };
       cards.appendChild(card);
     }
@@ -531,8 +545,8 @@ const SettingsUI = {
     }
     const custom = el('input');
     custom.type = 'color';
+    custom.title = 'Cor personalizada';
     custom.value = Settings.get('accent');
-    custom.style.cssText = 'width:34px;height:34px;padding:0;border:0;background:none;cursor:pointer';
     custom.oninput = () => Settings.set('accent', custom.value);
     sw.appendChild(custom);
     box.appendChild(row({ title: 'Cor de destaque', desc: 'Botões, seleção e realces.', control: sw, stack: true }));
@@ -559,7 +573,7 @@ const SettingsUI = {
       stack: true,
     }));
 
-    const reset = el('button', 'btn btn-soft', 'Restaurar aparência padrão');
+    const reset = iconButton('refresh', 'Restaurar aparência padrão');
     reset.onclick = () => {
       Settings.patch({ theme: 'escuro', accent: '#5865f2', radius: 1, glass: 0.74 });
       this.render();
@@ -632,10 +646,10 @@ const SettingsUI = {
       const btns = el('div');
       btns.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap';
       if (!info.tunnelUrl) {
-        const t = el('button', 'btn btn-primary', 'Criar link público');
+        const t = iconButton('link', 'Criar link público', 'btn btn-primary');
         t.onclick = async () => {
           t.disabled = true;
-          t.innerHTML = '<span class="spinner"></span> Abrindo…';
+          t.innerHTML = '<span class="spinner"></span><span>Abrindo…</span>';
           try {
             const url = await window.desktop.tunnelStart(info.hostInfo.url);
             copyText(url, 'Link público copiado!');
@@ -643,19 +657,19 @@ const SettingsUI = {
           } catch (err) {
             toast('Falhou: ' + (err.message || err));
             t.disabled = false;
-            t.textContent = 'Criar link público';
+            t.innerHTML = `<span class="i">${icon('link', 17)}</span><span>Criar link público</span>`;
           }
         };
         btns.appendChild(t);
       } else {
-        const c = el('button', 'btn btn-primary', 'Copiar link público');
+        const c = iconButton('copy', 'Copiar link público', 'btn btn-primary');
         c.onclick = () => copyText(info.tunnelUrl, 'Link copiado!');
         btns.appendChild(c);
       }
       box.appendChild(row({ title: 'Link para os amigos', desc: 'Endereço HTTPS que funciona de qualquer lugar.', control: btns, stack: true }));
     }
 
-    const home = el('button', 'btn btn-soft', 'Voltar à tela inicial');
+    const home = iconButton('home', 'Voltar à tela inicial');
     home.onclick = () => window.desktop.goHome();
     box.appendChild(row({ title: 'Trocar de servidor', desc: 'Encerra a sessão e volta para a escolha de hospedar/conectar.', control: home }));
   },
@@ -666,7 +680,7 @@ const SettingsUI = {
     box.appendChild(el('h2', null, 'Sobre'));
 
     const lines = [
-      'Discord2 — servidores privados e compartilhamento de tela.',
+      'DiSlackso — servidores privados, tela compartilhada e anotação ao vivo.',
       '',
       'A mídia vai direto entre os participantes (WebRTC). O servidor só',
       'apresenta as pessoas e guarda servidores, convites e perfis.',
@@ -682,7 +696,7 @@ const SettingsUI = {
     pre.textContent = lines.join('\n');
     box.appendChild(pre);
 
-    const reset = el('button', 'btn btn-danger', 'Restaurar todas as configurações');
+    const reset = iconButton('refresh', 'Restaurar todas as configurações', 'btn btn-danger');
     reset.onclick = async () => {
       const ok = await confirmModal({
         title: 'Restaurar configurações',
@@ -718,6 +732,8 @@ function showProfile(user) {
     ? `background-image:url('${esc(user.banner)}')`
     : `background:${esc(user.accent || user.color)}`;
 
+  // O <h2> fica vazio de propósito: o CSS esconde `h2:empty`, então o banner
+  // encosta no topo do cartão sem precisar mexer no estilo por JS.
   openModal({
     title: '',
     body: `
@@ -733,10 +749,6 @@ function showProfile(user) {
     okText: 'Fechar',
     onOk: () => {},
   });
-  $('#modal-title').style.display = 'none';
-  const restore = () => { $('#modal-title').style.display = ''; };
-  setTimeout(() => { $('#modal').addEventListener('click', restore, { once: true }); }, 0);
-  $('#modal-ok').addEventListener('click', restore, { once: true });
 }
 
 /* ============================================== seletor de telas ======== */
@@ -768,8 +780,12 @@ function installScreenPicker() {
 
       $('#modal-body').innerHTML = `
         <div class="picker-tabs">
-          <button data-tab="screen" class="${filter === 'screen' ? 'on' : ''}">Telas inteiras</button>
-          <button data-tab="window" class="${filter === 'window' ? 'on' : ''}">Janelas</button>
+          <button data-tab="screen" class="${filter === 'screen' ? 'on' : ''}">
+            ${icon('monitor', 16)}<span>Telas inteiras</span>
+          </button>
+          <button data-tab="window" class="${filter === 'window' ? 'on' : ''}">
+            ${icon('grid', 16)}<span>Janelas</span>
+          </button>
         </div>
         <div class="picker-grid">${grid || '<p>Nada encontrado aqui.</p>'}</div>
         <p class="set-note">Escolher uma tela inteira captura também o áudio do sistema (Windows).</p>`;

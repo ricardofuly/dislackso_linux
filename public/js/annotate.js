@@ -345,13 +345,13 @@ const Annot = {
     bar.className = 'annot-bar';
 
     const tools = [
-      ['caneta', '&#9998;', 'Caneta'],
-      ['marcador', '&#128396;', 'Marcador'],
-      ['seta', '&#8599;', 'Seta'],
+      ['caneta', 'pen', 'Caneta'],
+      ['marcador', 'highlighter', 'Marcador'],
+      ['seta', 'arrow', 'Seta'],
     ];
     for (const [id, ico, title] of tools) {
       const b = document.createElement('button');
-      b.innerHTML = ico;
+      b.innerHTML = icon(ico, 16);
       b.title = title;
       b.classList.toggle('on', this.tool === id);
       b.onclick = (e) => { e.stopPropagation(); this.tool = id; onChange(); };
@@ -377,13 +377,13 @@ const Annot = {
     bar.appendChild(Object.assign(document.createElement('span'), { className: 'sep' }));
 
     const clear = document.createElement('button');
-    clear.innerHTML = '&#128465;';
+    clear.innerHTML = icon('trash', 16);
     clear.title = 'Apagar tudo';
     clear.onclick = (e) => { e.stopPropagation(); this.clear(targetId); };
     bar.appendChild(clear);
 
     const close = document.createElement('button');
-    close.innerHTML = '&#10005;';
+    close.innerHTML = icon('x', 16);
     close.title = 'Sair do modo caneta';
     close.onclick = (e) => { e.stopPropagation(); this.setActive(null); onChange(); };
     bar.appendChild(close);

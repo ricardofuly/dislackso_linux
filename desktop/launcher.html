@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
-<title>Discord2</title>
+<title>DiSlackso</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   html, body { height: 100%; }
@@ -34,7 +34,7 @@
   .card.on { border-color: #5865f2; background: rgba(53,56,62,.9); }
   .card h2 { font-size: 16px; color: #fff; margin-bottom: 6px; display: flex; align-items: center; gap: 8px; }
   .card p { font-size: 13px; color: #a8adb5; }
-  .card .ico { font-size: 20px; }
+  .card .ico { width: 20px; height: 20px; flex: none; }
 
   .panel {
     margin-top: 16px; background: rgba(30,31,34,.8);
@@ -95,17 +95,23 @@
   <div class="wrap">
     <div class="brand">
       <svg viewBox="0 0 100 100" width="38" height="38"><rect width="100" height="100" rx="24" fill="#5865f2"/><rect x="22" y="30" width="56" height="36" rx="6" fill="#fff"/><rect x="42" y="70" width="16" height="6" rx="3" fill="#fff"/></svg>
-      <h1>Discord2</h1>
+      <h1>DiSlackso</h1>
     </div>
     <p class="sub">Escolha como você quer usar o app.</p>
 
     <div class="cards">
       <button class="card" id="card-host">
-        <h2><span class="ico">🖥️</span> Hospedar aqui</h2>
+        <h2>
+          <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8"/><path d="M12 17v4"/></svg>
+          Hospedar aqui
+        </h2>
         <p>Seu PC vira o servidor. Seus amigos se conectam a você. Nada sai da sua máquina.</p>
       </button>
       <button class="card" id="card-connect">
-        <h2><span class="ico">🔗</span> Conectar</h2>
+        <h2>
+          <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/></svg>
+          Conectar
+        </h2>
         <p>Entrar num servidor que já existe — de um amigo ou hospedado na nuvem.</p>
       </button>
     </div>
@@ -234,7 +240,7 @@ async function makeTunnel() {
   try {
     tunnelPublic = await window.desktop.tunnelStart(hostInfo.url);
     $('#tunnel-out').innerHTML = addr('Link público (mande para os amigos)', tunnelPublic,
-      'Válido enquanto o app estiver aberto. Fechar o Discord2 derruba o link.');
+      'Válido enquanto o app estiver aberto. Fechar o DiSlackso derruba o link.');
     btn.textContent = 'Link criado';
   } catch (err) {
     $('#tunnel-out').innerHTML =

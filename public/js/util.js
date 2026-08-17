@@ -146,18 +146,42 @@ function copyText(text, okMsg = 'Copiado!') {
 
 /* ----------------------------------------------------- persistência ---- */
 
+const LS_PREFIX = 'dsx:';
+const LS_LEGACY_PREFIX = 'd2:';   // prefixo da versão anterior, chamada Discord2
+
+/**
+ * Traz as chaves da versão anterior para o prefixo novo.
+ * Sem isso, renomear o app faria todo mundo perder identidade, servidores
+ * salvos e preferências — o usuário voltaria à tela de apelido do zero.
+ */
+function migrateLegacyStorage() {
+  try {
+    if (localStorage.getItem(LS_PREFIX + 'migrated')) return;
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (!key || !key.startsWith(LS_LEGACY_PREFIX)) continue;
+      const novo = LS_PREFIX + key.slice(LS_LEGACY_PREFIX.length);
+      if (localStorage.getItem(novo) === null) {
+        localStorage.setItem(novo, localStorage.getItem(key));
+      }
+    }
+    localStorage.setItem(LS_PREFIX + 'migrated', '1');
+  } catch { /* modo privado sem storage: segue sem migrar */ }
+}
+migrateLegacyStorage();
+
 const LS = {
   get(key, fallback = null) {
     try {
-      const raw = localStorage.getItem('d2:' + key);
+      const raw = localStorage.getItem(LS_PREFIX + key);
       return raw === null ? fallback : JSON.parse(raw);
     } catch { return fallback; }
   },
   set(key, value) {
-    try { localStorage.setItem('d2:' + key, JSON.stringify(value)); } catch {}
+    try { localStorage.setItem(LS_PREFIX + key, JSON.stringify(value)); } catch {}
   },
   del(key) {
-    try { localStorage.removeItem('d2:' + key); } catch {}
+    try { localStorage.removeItem(LS_PREFIX + key); } catch {}
   },
 };
 

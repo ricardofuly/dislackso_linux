@@ -1,4 +1,4 @@
-# Discord2
+# DiSlackso
 
 Servidores privados, compartilhamento de tela em alta resolução e anotação ao vivo — como
 app de PC ou pelo navegador.
@@ -38,7 +38,7 @@ O app tem duas vantagens sobre o navegador: **seletor de tela próprio** com min
 npm run portable
 ```
 
-Sai `dist/Discord2-portable/` (~277 MB). Zipe a pasta e mande; eles rodam `Discord2.exe`
+Sai `dist/DiSlackso-portable/` (~277 MB). Zipe a pasta e mande; eles rodam `DiSlackso.exe`
 direto, escolhem "Conectar" e colam o seu link.
 
 **Instalador .exe**:
@@ -47,7 +47,7 @@ direto, escolhem "Conectar" e colam o seu link.
 npm run build
 ```
 
-Gera `dist/Discord2-Setup-2.0.0.exe` (~79 MB). Instalador comum: escolhe pasta, cria atalho,
+Gera `dist/DiSlackso-Setup-3.0.0.exe` (~79 MB). Instalador comum: escolhe pasta, cria atalho,
 desinstala pelo Painel de Controle.
 
 > **Sobre o erro "Cannot create symbolic link"**
@@ -178,6 +178,17 @@ pessoas transmitindo ao mesmo tempo, o caminho seria um servidor SFU.
 
 Trocar de microfone não derruba a conexão: a faixa é substituída no lugar.
 
+### Interface
+
+Os ícones são SVG inline, na mesma grade 24×24 com traço de 2 e `currentColor` — nada de
+emoji. Emoji muda de desenho, de tamanho e de linha-base conforme o sistema e a fonte, e era
+a origem dos desalinhamentos em botões.
+
+O layout responde em três pontos de quebra: em 1080px as colunas laterais encolhem; em 880px
+os rótulos dos controles somem e sobra o ícone; em 680px a navegação das configurações vira
+só ícones e as linhas de opção empilham. Janela baixa (menos de 560px) esconde a tira de
+miniaturas para o palco não sumir.
+
 ---
 
 ## Como está montado
@@ -191,6 +202,9 @@ desktop/launcher.html  tela de escolher hospedar/conectar
 public/css/theme.css   tokens de design e os quatro temas
 public/css/app.css     layout e componentes
 public/css/motion.css  animações
+public/js/icons.js     ícones em SVG inline (sem emoji, sem CDN)
+public/js/util.js      DOM, avisos, modais, upload, persistência
+public/js/settings.js  preferências e sua aplicação no documento
 public/js/rtc.js       motor WebRTC: negociação, codecs, bitrate, microfone
 public/js/annotate.js  camada de rabisco
 public/js/screens.js   configurações, perfil, seletor de telas

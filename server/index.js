@@ -1,7 +1,7 @@
 'use strict';
 
 /**
- * Discord2 - servidor de signaling, perfis e servidores privados.
+ * DiSlackso - servidor de signaling, perfis e servidores privados.
  *
  * O servidor NAO ve nem retransmite audio/video. Ele so:
  *   1. guarda servidores (guilds), canais, membros, convites e perfis;

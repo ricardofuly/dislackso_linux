@@ -1,6 +1,13 @@
+# dependências
 node_modules/
+
+# dados locais (banco, uploads, certificados)
 data/
 certs/
+
+# saídas de build
 dist/
 build/icon.png
+build/icon.ico
+
 *.log

@@ -12,7 +12,7 @@ const instance = createServer();
 
 instance.listen().then(({ url, lan, scheme }) => {
   console.log('');
-  console.log('  Discord2 no ar');
+  console.log('  DiSlackso no ar');
   console.log(`  local :  ${url}`);
   for (const addr of lan) console.log(`  rede  :  ${addr}`);
   if (scheme === 'http') {
@@ -23,7 +23,7 @@ instance.listen().then(({ url, lan, scheme }) => {
   console.log('');
 }).catch((err) => {
   if (err.code === 'EADDRINUSE') {
-    console.error(`\n  A porta ${instance.port} ja esta em uso. Feche o outro Discord2 ou use PORT=3001 npm start\n`);
+    console.error(`\n  A porta ${instance.port} ja esta em uso. Feche o outro DiSlackso ou use PORT=3001 npm start\n`);
   } else {
     console.error('\n  Falha ao iniciar:', err.message, '\n');
   }

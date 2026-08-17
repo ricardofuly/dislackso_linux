@@ -1,7 +1,7 @@
 'use strict';
 
 /**
- * Processo principal do Discord2 Desktop.
+ * Processo principal do DiSlackso Desktop.
  *
  * Dois modos, escolhidos no lancador:
  *   - Hospedar : sobe o servidor dentro deste processo; seu PC vira o servidor.

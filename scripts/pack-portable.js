@@ -1,7 +1,7 @@
 'use strict';
 
 /**
- * Monta uma versão portátil em dist/Discord2-portable — uma pasta que roda
+ * Monta uma versão portátil em dist/DiSlackso-portable — uma pasta que roda
  * direto, sem instalador e sem privilégio de administrador.
  *
  * Existe porque o instalador do electron-builder precisa criar links
@@ -16,7 +16,7 @@ const { execFileSync } = require('child_process');
 
 const ROOT = path.join(__dirname, '..');
 const ELECTRON_DIST = path.join(ROOT, 'node_modules', 'electron', 'dist');
-const OUT = path.join(ROOT, 'dist', 'Discord2-portable');
+const OUT = path.join(ROOT, 'dist', 'DiSlackso-portable');
 const APP = path.join(OUT, 'resources', 'app');
 
 const pkg = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
@@ -96,7 +96,7 @@ for (const dir of ['desktop', 'server', 'public']) {
 fs.mkdirSync(APP, { recursive: true });
 fs.writeFileSync(path.join(APP, 'package.json'), JSON.stringify({
   name: pkg.name,
-  productName: 'Discord2',
+  productName: 'DiSlackso',
   version: pkg.version,
   description: pkg.description,
   main: pkg.main,
@@ -112,7 +112,7 @@ console.log(`  ${deps.length} pacotes`);
 
 console.log('Renomeando o executável…');
 const exeFrom = path.join(OUT, 'electron.exe');
-const exeTo = path.join(OUT, 'Discord2.exe');
+const exeTo = path.join(OUT, 'DiSlackso.exe');
 if (fs.existsSync(exeFrom)) fs.renameSync(exeFrom, exeTo);
 
 /* Ícone: usa o rcedit do cache do electron-builder, se estiver por perto. */
@@ -139,14 +139,14 @@ if (fs.existsSync(ico)) {
 }
 
 /* Atalho de conveniência para quem só quer clicar. */
-fs.writeFileSync(path.join(OUT, 'Abrir Discord2.bat'),
-  '@echo off\r\nstart "" "%~dp0Discord2.exe"\r\n');
+fs.writeFileSync(path.join(OUT, 'Abrir DiSlackso.bat'),
+  '@echo off\r\nstart "" "%~dp0DiSlackso.exe"\r\n');
 
 fs.writeFileSync(path.join(OUT, 'LEIA-ME.txt'),
   [
-    'Discord2 — versão portátil',
+    'DiSlackso — versão portátil',
     '',
-    'Rode Discord2.exe (ou "Abrir Discord2.bat").',
+    'Rode DiSlackso.exe (ou "Abrir DiSlackso.bat").',
     'Não precisa instalar nada.',
     '',
     'Na primeira tela, escolha:',
@@ -158,5 +158,5 @@ fs.writeFileSync(path.join(OUT, 'LEIA-ME.txt'),
 
 const mb = (dirSize(OUT) / 1024 / 1024).toFixed(0);
 console.log('');
-console.log(`Pronto: dist/Discord2-portable (${mb} MB)`);
-console.log('Rode dist/Discord2-portable/Discord2.exe ou zipe a pasta e mande para os amigos.');
+console.log(`Pronto: dist/DiSlackso-portable (${mb} MB)`);
+console.log('Rode dist/DiSlackso-portable/DiSlackso.exe ou zipe a pasta e mande para os amigos.');
