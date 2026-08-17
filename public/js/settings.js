@@ -41,6 +41,9 @@ const DEFAULT_SETTINGS = {
   micMode: 'voz',          // 'voz' | 'ptt'
   pttKey: 'Space',
 
+  // aplicativo
+  autoUpdate: true,
+
   // anotações
   annotAllow: true,
   annotFade: 8,            // segundos; 0 = não some

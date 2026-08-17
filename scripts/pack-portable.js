@@ -138,6 +138,11 @@ if (fs.existsSync(ico)) {
   }
 }
 
+/* Marca que esta cópia é portátil: o app lê isso para desligar a atualização
+   automática, já que aqui não existe instalador para rodar. */
+fs.writeFileSync(path.join(OUT, 'resources', 'PORTABLE'),
+  'Esta instalacao e portatil: a atualizacao automatica fica desligada.\r\n');
+
 /* Atalho de conveniência para quem só quer clicar. */
 fs.writeFileSync(path.join(OUT, 'Abrir DiSlackso.bat'),
   '@echo off\r\nstart "" "%~dp0DiSlackso.exe"\r\n');

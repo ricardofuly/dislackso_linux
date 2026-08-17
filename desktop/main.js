@@ -17,6 +17,7 @@ const { app, BrowserWindow, ipcMain, session, desktopCapturer, shell, Menu, dial
 const path = require('path');
 const fs = require('fs');
 const { spawn } = require('child_process');
+const { autoUpdater } = require('electron-updater');
 
 const CONFIG_FILE = path.join(app.getPath('userData'), 'config.json');
 const DEFAULTS = {
@@ -227,6 +228,85 @@ function stopTunnel() {
   tunnelUrl = '';
 }
 
+/* ------------------------------------------------------- atualização -- */
+
+/**
+ * Atualização automática pelos releases do GitHub.
+ *
+ * O electron-builder publica um `latest.yml` junto do instalador; é ele que
+ * o electron-updater lê para saber a versão mais nova. O download aproveita
+ * o `.blockmap` e baixa só os pedaços que mudaram — costuma ser alguns MB
+ * em vez dos 79 do instalador inteiro.
+ *
+ * Nada acontece sozinho: quem manda baixar e quem manda reiniciar é o
+ * usuário, pela tela de atualização.
+ */
+autoUpdater.autoDownload = false;
+autoUpdater.autoInstallOnAppQuit = false;
+autoUpdater.logger = null;
+
+let updateState = { status: 'idle', info: null, progress: null, error: null };
+
+/** A versão portátil não tem instalador para rodar. */
+const isPortableBuild = () => fs.existsSync(path.join(process.resourcesPath || '', 'PORTABLE'));
+
+function updateCapability() {
+  if (!app.isPackaged && !process.env.DISLACKSO_DEV_UPDATE) {
+    return { can: false, reason: 'dev' };
+  }
+  if (isPortableBuild()) return { can: false, reason: 'portable' };
+  return { can: true, reason: null };
+}
+
+/** Só o que a interface precisa — o objeto do updater é grande e cheio de ruído. */
+function slimInfo(info) {
+  if (!info) return null;
+  let notes = info.releaseNotes;
+  if (Array.isArray(notes)) notes = notes.map((n) => n.note || '').join('\n\n');
+  if (typeof notes !== 'string') notes = '';
+  // Vem como HTML do GitHub; a interface mostra como texto puro.
+  notes = notes.replace(/<[^>]+>/g, '').replace(/\n{3,}/g, '\n\n').trim().slice(0, 4000);
+  return {
+    version: info.version,
+    releaseName: info.releaseName || null,
+    releaseDate: info.releaseDate || null,
+    notes,
+  };
+}
+
+function pushUpdate(patch) {
+  updateState = { ...updateState, ...patch };
+  if (win && !win.isDestroyed()) {
+    win.webContents.send('update:state', { ...updateState, ...updateCapability(), current: app.getVersion() });
+  }
+}
+
+autoUpdater.on('checking-for-update', () => pushUpdate({ status: 'checking', error: null }));
+autoUpdater.on('update-available', (info) => pushUpdate({ status: 'available', info: slimInfo(info), error: null }));
+autoUpdater.on('update-not-available', (info) => pushUpdate({ status: 'current', info: slimInfo(info), error: null }));
+autoUpdater.on('update-downloaded', (info) => pushUpdate({ status: 'ready', info: slimInfo(info), progress: null }));
+autoUpdater.on('download-progress', (p) => pushUpdate({
+  status: 'downloading',
+  progress: {
+    percent: Math.max(0, Math.min(100, p.percent || 0)),
+    transferred: p.transferred || 0,
+    total: p.total || 0,
+    speed: p.bytesPerSecond || 0,
+  },
+}));
+autoUpdater.on('error', (err) => {
+  const msg = String((err && err.message) || err);
+  pushUpdate({
+    status: 'error',
+    // A mensagem crua do updater é técnica demais para a tela.
+    error: /ERR_UPDATER_CHANNEL_FILE_NOT_FOUND|404/.test(msg)
+      ? 'Nenhuma versão publicada encontrada no GitHub.'
+      : /net::|ENOTFOUND|EAI_AGAIN|ETIMEDOUT/.test(msg)
+        ? 'Sem conexão com o GitHub. Tente de novo mais tarde.'
+        : msg,
+  });
+});
+
 /* ---------------------------------------------------------------- IPC -- */
 
 ipcMain.handle('config:get', () => readConfig());
@@ -263,6 +343,46 @@ ipcMain.handle('nav:open', (_e, url) => {
 
 ipcMain.handle('shell:openExternal', (_e, url) => {
   if (/^https?:\/\//i.test(String(url))) shell.openExternal(url);
+});
+
+ipcMain.handle('update:state', () => ({
+  ...updateState, ...updateCapability(), current: app.getVersion(),
+}));
+
+ipcMain.handle('update:check', async () => {
+  const cap = updateCapability();
+  if (!cap.can) {
+    pushUpdate({ status: 'blocked', error: null });
+    return { ...updateState, ...cap, current: app.getVersion() };
+  }
+  try {
+    // Em desenvolvimento só funciona com o dev-app-update.yml presente.
+    if (!app.isPackaged) autoUpdater.forceDevUpdateConfig = true;
+    await autoUpdater.checkForUpdates();
+  } catch (err) {
+    pushUpdate({ status: 'error', error: String(err.message || err) });
+  }
+  return { ...updateState, ...cap, current: app.getVersion() };
+});
+
+ipcMain.handle('update:download', async () => {
+  if (!updateCapability().can) return false;
+  try {
+    pushUpdate({ status: 'downloading', progress: { percent: 0, transferred: 0, total: 0, speed: 0 } });
+    await autoUpdater.downloadUpdate();
+    return true;
+  } catch (err) {
+    pushUpdate({ status: 'error', error: String(err.message || err) });
+    return false;
+  }
+});
+
+ipcMain.handle('update:install', () => {
+  stopTunnel();
+  stopHost();
+  // isSilent=false mostra o instalador; isForceRunAfter=true reabre o app.
+  setImmediate(() => autoUpdater.quitAndInstall(false, true));
+  return true;
 });
 
 ipcMain.handle('dialog:pickFolder', async () => {

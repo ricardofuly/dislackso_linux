@@ -8,6 +8,13 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
 let screenPicker = null;
+let updateListener = null;
+
+ipcRenderer.on('update:state', (_e, state) => {
+  if (updateListener) {
+    try { updateListener(state); } catch (err) { console.error('[preload] updater:', err); }
+  }
+});
 
 ipcRenderer.on('screen:pick', async (_e, sources) => {
   let chosen = null;
@@ -40,4 +47,14 @@ contextBridge.exposeInMainWorld('desktop', {
    * devolve (via Promise) o id escolhido, ou null para cancelar.
    */
   onPickScreen: (fn) => { screenPicker = fn; },
+
+  /* ---- atualização ---- */
+  update: {
+    state: () => ipcRenderer.invoke('update:state'),
+    check: () => ipcRenderer.invoke('update:check'),
+    download: () => ipcRenderer.invoke('update:download'),
+    install: () => ipcRenderer.invoke('update:install'),
+    /** Recebe cada mudança de estado do processo principal. */
+    onChange: (fn) => { updateListener = fn; },
+  },
 });

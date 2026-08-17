@@ -162,7 +162,9 @@ const SettingsUI = {
                       ['anotacoes', 'Anotações', 'pen']]],
       ['Aparência', [['tema', 'Tema e cores', 'palette'], ['animacoes', 'Animações', 'sparkles']]],
       ['Sistema', isDesktop()
-        ? [['app', 'Aplicativo', 'monitor'], ['sobre', 'Sobre', 'info']]
+        ? [['app', 'Aplicativo', 'monitor'],
+           ['atualizacoes', 'Atualizações', 'refresh'],
+           ['sobre', 'Sobre', 'info']]
         : [['sobre', 'Sobre', 'info']]],
     ];
     for (const [label, items] of groups) {
@@ -672,6 +674,65 @@ const SettingsUI = {
     const home = iconButton('home', 'Voltar à tela inicial');
     home.onclick = () => window.desktop.goHome();
     box.appendChild(row({ title: 'Trocar de servidor', desc: 'Encerra a sessão e volta para a escolha de hospedar/conectar.', control: home }));
+  },
+
+  /* ------------------------------------------------------ atualizações - */
+
+  async section_atualizacoes(box) {
+    box.appendChild(el('h2', null, 'Atualizações'));
+    if (!isDesktop()) return;
+
+    const s = await window.desktop.update.state();
+
+    const rotulos = {
+      idle: 'Nunca verificado nesta sessão',
+      checking: 'Procurando…',
+      available: `Versão ${s.info && s.info.version} disponível`,
+      downloading: 'Baixando…',
+      ready: `Versão ${s.info && s.info.version} pronta para instalar`,
+      current: 'Você está na versão mais recente',
+      error: s.error || 'Falha ao verificar',
+      blocked: 'Indisponível nesta instalação',
+    };
+
+    const situacao = el('div');
+    situacao.style.cssText = 'font-size:14px;color:var(--text)';
+    situacao.textContent = s.can ? (rotulos[s.status] || rotulos.idle)
+      : (s.reason === 'portable'
+          ? 'Versão portátil — atualize baixando a nova pasta.'
+          : 'Rodando a partir do código-fonte.');
+    box.appendChild(row({
+      title: `Versão instalada: ${s.current}`,
+      desc: 'De onde vêm as atualizações: releases do repositório no GitHub.',
+      control: situacao, stack: true,
+    }));
+
+    const abrir = iconButton('refresh', s.can ? 'Procurar atualizações' : 'Abrir tela de atualização', 'btn btn-primary');
+    abrir.onclick = () => { Updater.open(); if (s.can) Updater.check(); };
+    box.appendChild(row({
+      title: 'Verificar agora',
+      desc: 'Abre a tela de atualização e consulta o GitHub.',
+      control: abrir,
+    }));
+
+    box.appendChild(row({
+      title: 'Procurar ao abrir o app',
+      desc: 'Consulta o GitHub alguns segundos depois de iniciar. Nada é baixado sem você mandar.',
+      control: switchControl(Settings.get('autoUpdate') !== false, (v) => Settings.set('autoUpdate', v)),
+    }));
+
+    const releases = iconButton('link', 'Ver todas as versões');
+    releases.onclick = () => window.desktop.openExternal('https://github.com/spikeleez/dislackso/releases');
+    box.appendChild(row({
+      title: 'Histórico',
+      desc: 'A lista completa de versões e o que mudou em cada uma.',
+      control: releases,
+    }));
+
+    box.appendChild(el('p', 'set-note',
+      'A atualização baixa só os pedaços que mudaram desde a sua versão, então costuma ser '
+      + 'bem menor que o instalador inteiro. Para concluir, o app reinicia — ele pergunta antes '
+      + 'e reabre sozinho.'));
   },
 
   /* ------------------------------------------------------------ sobre -- */

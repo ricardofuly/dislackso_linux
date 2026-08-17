@@ -36,6 +36,8 @@
 .picker-item      { animation: pop-in var(--t-med) var(--ease-out) both; }
 .set-body         { animation: slide-up var(--t-med) var(--ease-out) both; }
 .annot-bar        { animation: slide-down var(--t-med) var(--ease-out) both; }
+.updater          { animation: fade-in var(--t-fast) var(--ease) both; }
+.upd-card         { animation: pop-in var(--t-med) var(--ease-out) both; }
 
 /* Escalona a entrada dos itens de lista: cada um entra logo depois do anterior. */
 .rail-list .rail-btn { animation: pop-in var(--t-med) var(--ease-bounce) both; }

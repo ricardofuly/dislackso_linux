@@ -835,6 +835,8 @@ function wireKeyboard() {
     }
     if (e.key === 'Escape') {
       if (modalOpen()) return closeModal();
+      // Durante o download não fecha: sair no meio confunde mais que ajuda.
+      if (Updater.isOpen() && Updater.state.status !== 'downloading') return Updater.close();
       if (SettingsUI.isOpen()) return SettingsUI.close();
       if (S.focusId) { S.focusId = null; return renderStageContent(); }
       if (Annot.active) { Annot.setActive(null); return syncAnnotBars(); }
@@ -886,6 +888,7 @@ document.addEventListener('DOMContentLoaded', () => {
   wireActions();
   wireKeyboard();
   installScreenPicker();
+  Updater.init();
   Settings.apply();
   bootGate();
   // O status de conexão de cada par muda sem evento; refresca de leve.
