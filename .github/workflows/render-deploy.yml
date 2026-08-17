@@ -1,0 +1,26 @@
+name: Deploy no Render
+
+# Dispara sempre que um Release é publicado no GitHub, pra manter o servidor
+# no Render (e consequentemente o estado no Supabase, que ele espelha) em
+# dia com a versão que os apps desktop vão baixar via auto-atualização.
+#
+# Precisa do secret RENDER_DEPLOY_HOOK_URL (Render → serviço → Settings →
+# Deploy Hook). Sem ele o passo é pulado silenciosamente — não fica
+# vermelho no Actions só porque ainda não foi configurado.
+on:
+  release:
+    types: [published]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Disparar deploy hook do Render
+        env:
+          HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+        run: |
+          if [ -z "$HOOK_URL" ]; then
+            echo "RENDER_DEPLOY_HOOK_URL não configurado — pulando. Veja DEPLOY.md."
+            exit 0
+          fi
+          curl -fsS -X POST "$HOOK_URL"

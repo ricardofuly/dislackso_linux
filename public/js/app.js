@@ -12,10 +12,13 @@ const S = {
   activeTextChannelId: null,
   messages: new Map(), // guildId/channelId -> mensagens já carregadas
   presence: {},        // guildId -> { channelId: [peerInfo] }
+  online: {},           // guildId -> Set(userId) conectados agora
   voice: null,         // { guildId, channelId }
   rejoin: null,        // sala a retomar depois de uma reconexão
   focusId: null,       // tile em destaque ('local' ou sid), null = grade
   sharingSeen: new Set(),
+  gateMode: 'login',   // 'login' | 'register'
+  gateBusy: false,
 };
 
 const tiles = new Map();     // id -> { el, video, streamId, annotActive }
@@ -65,55 +68,116 @@ function ask(event, payload) {
 
 /* ============================================================= login ==== */
 
-function bootGate() {
-  const saved = LS.get('name', '');
-  $('#gate-name').value = saved;
-  $('#gate-go').onclick = doLogin;
-  $('#gate-name').onkeydown = (e) => { if (e.key === 'Enter') doLogin(); };
+/** Conta anônima de antes do login existir: tem userId salvo, mas sem token. */
+const legacyUserId = () => (LS.get('authToken') ? null : LS.get('userId'));
 
-  if (saved && LS.get('userId')) {
-    $('#gate').classList.add('hidden');
-    connect();
+function showGate() {
+  $('#gate').classList.remove('hidden');
+  const saved = LS.get('name', '');
+  if (saved) $('#gate-username').value = saved.replace(/[^a-zA-Z0-9_]/g, '').slice(0, 20);
+  setGateMode(legacyUserId() ? 'register' : 'login');
+  setTimeout(() => $('#gate-username').focus(), 40);
+}
+
+function hideGate() {
+  $('#gate').classList.add('hidden');
+}
+
+function setGateMode(mode) {
+  S.gateMode = mode;
+  $('#gate-tab-login').classList.toggle('active', mode === 'login');
+  $('#gate-tab-register').classList.toggle('active', mode === 'register');
+  $('#gate-go').textContent = mode === 'login' ? 'Entrar' : (legacyUserId() ? 'Proteger minha conta' : 'Criar conta');
+  $('#gate-password').autocomplete = mode === 'login' ? 'current-password' : 'new-password';
+  $('#gate-hint').textContent = mode === 'register' && legacyUserId()
+    ? 'Você já usava o app sem senha — escolha um nickname e uma senha pra proteger essa mesma conta (seus servidores continuam salvos).'
+    : 'Sem e-mail — só nickname e senha, guardados no nosso banco.';
+  $('#gate-error').classList.add('hidden');
+}
+
+async function submitGate() {
+  if (S.gateBusy) return;
+  const username = $('#gate-username').value.trim();
+  const password = $('#gate-password').value;
+  if (!username || !password) return showGateError('Preencha nickname e senha.');
+
+  S.gateBusy = true;
+  $('#gate-go').disabled = true;
+  try {
+    let res;
+    if (S.gateMode === 'login') {
+      res = await ask('auth:login', { username, password });
+    } else if (legacyUserId()) {
+      res = await ask('auth:claim', { userId: legacyUserId(), username, password });
+    } else {
+      res = await ask('auth:register', { username, password, name: username });
+    }
+    establishSession(res);
+  } catch (err) {
+    showGateError(err.message);
+  } finally {
+    S.gateBusy = false;
+    $('#gate-go').disabled = false;
   }
 }
 
-function doLogin() {
-  const name = $('#gate-name').value.trim();
-  if (!name) return toast('Escolha um apelido para continuar.');
-  LS.set('name', name);
-  $('#gate').classList.add('hidden');
-  connect();
+function showGateError(msg) {
+  $('#gate-error').textContent = msg;
+  $('#gate-error').classList.remove('hidden');
+}
+
+/** Chamado depois de hello/auth:login/auth:register/auth:claim: abre a sessão pra valer. */
+function establishSession(res) {
+  S.me = res.user;
+  LS.set('userId', res.user.id);
+  LS.set('authToken', res.token);
+  LS.set('name', res.user.name);
+  S.guilds = res.guilds;
+  hideGate();
+
+  Voice.configure({ socket: S.socket, sid: res.sid, iceServers: res.iceServers });
+  Voice.setQuality(Settings.get('quality'));
+  Voice.setContentHint(Settings.get('contentHint'));
+
+  if (!S.activeGuildId && S.guilds.length) S.activeGuildId = S.guilds[0].id;
+  renderAll();
+  handleInviteHash();
+
+  if (S.rejoin) {
+    const { guildId, channelId } = S.rejoin;
+    S.rejoin = null;
+    joinVoice(guildId, channelId).then(() => toast('Reconectado à sala.'));
+  }
+}
+
+function wireGate() {
+  $('#gate-tab-login').onclick = () => setGateMode('login');
+  $('#gate-tab-register').onclick = () => setGateMode('register');
+  $('#gate-form').onsubmit = (e) => { e.preventDefault(); submitGate(); };
 }
 
 /* =========================================================== conexão ==== */
 
 function connect() {
-  const socket = io({ transports: ['websocket', 'polling'] });
+  const serverUrl = window.ENV && window.ENV.SERVER_URL ? window.ENV.SERVER_URL : '';
+  const socket = io(serverUrl, { transports: ['websocket', 'polling'] });
   S.socket = socket;
   Annot.init(socket);
 
   socket.on('connect', async () => {
+    const userId = LS.get('userId');
+    const token = LS.get('authToken');
+    if (!userId || !token) return showGate();
     try {
-      const res = await ask('hello', { userId: LS.get('userId'), name: LS.get('name') });
-      S.me = res.user;
-      LS.set('userId', res.user.id);
-      S.guilds = res.guilds;
-
-      Voice.configure({ socket, sid: res.sid, iceServers: res.iceServers });
-      Voice.setQuality(Settings.get('quality'));
-      Voice.setContentHint(Settings.get('contentHint'));
-
-      if (!S.activeGuildId && S.guilds.length) S.activeGuildId = S.guilds[0].id;
-      renderAll();
-      handleInviteHash();
-
-      if (S.rejoin) {
-        const { guildId, channelId } = S.rejoin;
-        S.rejoin = null;
-        joinVoice(guildId, channelId).then(() => toast('Reconectado à sala.'));
-      }
+      const res = await ask('hello', { userId, token });
+      establishSession(res);
     } catch (err) {
-      toast('Falha ao entrar: ' + err.message);
+      if (err.message === 'auth_required') {
+        LS.del('authToken');
+        showGate();
+      } else {
+        toast('Falha ao entrar: ' + err.message);
+      }
     }
   });
 
@@ -121,6 +185,11 @@ function connect() {
     $('#stage-conn').textContent = 'Reconectando…';
     S.me = null;
     if (S.voice) { S.rejoin = S.voice; leaveVoice({ silent: true }); }
+  });
+
+  socket.on('guild:online', ({ guildId, online }) => {
+    S.online[guildId] = new Set(online);
+    renderMembers();
   });
 
   socket.on('guild:update', (guild) => {
@@ -234,6 +303,44 @@ function renderAll() {
   renderMe();
   renderStage();
   renderTextChannel();
+  renderMembers();
+  persistCache();
+}
+
+/** Guarda perfil e lista de servidores localmente, pra aparecer na hora no próximo boot. */
+function persistCache() {
+  LS.set('guildsCache', S.guilds);
+  if (S.me) LS.set('profileCache', S.me);
+}
+
+function renderMembers() {
+  const box = $('#members-body');
+  if (!box) return;
+  const guild = activeGuild();
+  if (!guild) { box.innerHTML = ''; return; }
+
+  const online = S.online[guild.id] || new Set();
+  const sorted = [...guild.members].sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
+  const onlineMembers = sorted.filter((m) => online.has(m.id));
+  const offlineMembers = sorted.filter((m) => !online.has(m.id));
+
+  const section = (label, members) => {
+    if (!members.length) return '';
+    const rows = members.map((m) => `
+      <button class="member-row ${online.has(m.id) ? 'online' : 'offline'}" data-id="${esc(m.id)}">
+        ${avatarHTML(m, 'sm')}
+        <span class="nm">${esc(m.name)}${S.me && m.id === S.me.id ? ' (você)' : ''}</span>
+      </button>`).join('');
+    return `<div class="section-label">${esc(label)} — ${members.length}</div>${rows}`;
+  };
+
+  box.innerHTML = section('Online', onlineMembers) + section('Offline', offlineMembers);
+  for (const btn of $$('.member-row', box)) {
+    btn.onclick = () => {
+      const member = guild.members.find((m) => m.id === btn.dataset.id);
+      if (member) showProfile(member);
+    };
+  }
 }
 
 function renderRail() {
@@ -242,7 +349,7 @@ function renderRail() {
   for (const g of S.guilds) {
     const btn = el('button', 'rail-btn' + (g.id === S.activeGuildId ? ' active' : ''));
     btn.title = g.name;
-    if (g.icon) btn.innerHTML = `<img src="${esc(g.icon)}" alt="">`;
+    if (g.icon) btn.innerHTML = `<img src="${assetUrl(esc(g.icon))}" alt="">`;
     else btn.textContent = initials(g.name);
 
     const live = countLive(g.id);
@@ -498,7 +605,7 @@ function paintTile(id, info) {
     const idle = node.querySelector('.tile-idle');
     idle.classList.remove('hidden');
     const av = idle.querySelector('.avatar');
-    if (user.avatar) av.innerHTML = `<img src="${esc(user.avatar)}" alt="">`;
+    if (user.avatar) av.innerHTML = `<img src="${assetUrl(esc(user.avatar))}" alt="">`;
     else { av.innerHTML = ''; av.textContent = initials(user.name); av.style.background = user.color; }
     idle.querySelector('.who').textContent = status || (isLocal ? 'Você' : 'Sem tela compartilhada');
     for (const sel of ['.pip', '.vol', '.pen']) node.querySelector(sel).classList.add('hidden');
@@ -799,9 +906,11 @@ function wireActions() {
   document.addEventListener('click', () => $('#guild-menu').classList.add('hidden'));
   $('#guild-menu').onclick = onGuildMenu;
 
-  if (isDesktop()) {
-    $('#tb-home').onclick = () => window.desktop.goHome();
-  }
+  $('#btn-toggle-members').onclick = () => {
+    const open = $('#members-sidebar').classList.toggle('hidden');
+    LS.set('membersOpen', !open);
+  };
+  if (LS.get('membersOpen', true) === false) $('#members-sidebar').classList.add('hidden');
 }
 
 function joinByCode(code) {
@@ -816,7 +925,7 @@ function joinByCode(code) {
 }
 
 function showInvite(guild) {
-  const link = `${location.origin}/#invite=${guild.invite}`;
+  const link = `${serverOrigin()}/#invite=${guild.invite}`;
   openModal({
     title: 'Convidar amigos',
     body: `<p>Qualquer pessoa com este link entra em <b>${esc(guild.name)}</b>.</p>
@@ -979,17 +1088,43 @@ if (navigator.mediaDevices) {
   });
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+/** Mostra perfil e servidores salvos localmente antes mesmo do socket conectar. */
+function hydrateCache() {
+  const guilds = LS.get('guildsCache', []);
+  const me = LS.get('profileCache', null);
+  if (Array.isArray(guilds) && guilds.length) S.guilds = guilds;
+  if (me) S.me = me;
+  if (!S.activeGuildId && S.guilds.length) S.activeGuildId = S.guilds[0].id;
+  if (S.guilds.length || S.me) renderAll();
+}
+
+async function boot() {
   hydrateIcons();          // troca os marcadores data-icon do HTML pelos SVGs
   wireModal();
   wireActions();
+  wireGate();
   wireKeyboard();
   installScreenPicker();
   Updater.init();
   Settings.apply();
-  bootGate();
+  hydrateCache();
+
+  // O painel de desenvolvedor pode apontar o app pra outro servidor (testes).
+  if (isDesktop()) {
+    try {
+      const info = await window.desktop.info();
+      if (info && info.serverUrlOverride) {
+        window.ENV = window.ENV || {};
+        window.ENV.SERVER_URL = info.serverUrlOverride;
+      }
+    } catch (err) { console.warn('[boot] info do desktop:', err.message); }
+  }
+
+  connect();
   // O status de conexão de cada par muda sem evento; refresca de leve.
   setInterval(() => { if (S.voice) renderStageContent(); }, 2000);
-});
+}
+
+document.addEventListener('DOMContentLoaded', boot);
 
 window.App = App;

@@ -31,6 +31,23 @@ a chamada pode conectar mas a tela não chega a uma pessoa específica. Configur
 um serviço TURN e preencha `TURN_URL`, `TURN_USER` e `TURN_PASS` no Render;
 o servidor entrega essas credenciais aos clientes ao entrar na sala.
 
+## Deploy automático a cada Release
+
+Quando você publica um Release no GitHub (o mesmo que os apps desktop usam
+pra se auto-atualizar), o workflow `.github/workflows/render-deploy.yml`
+dispara um redeploy no Render — assim o servidor (e o estado que ele
+espelha no Supabase) fica sempre na mesma versão que os clientes acabaram
+de baixar. Passo único, manual, pra ligar isso:
+
+1. No Render, abra o serviço → **Settings → Deploy Hook** e copie a URL.
+2. No GitHub: **Settings → Secrets and variables → Actions → New repository
+   secret**, nome `RENDER_DEPLOY_HOOK_URL`, valor a URL copiada.
+
+Sem esse secret o workflow roda e não faz nada (não fica com erro). O
+Render também já redeploya sozinho a cada `git push` na branch conectada
+(comportamento padrão dele) — esse hook cobre especificamente o momento do
+Release, inclusive quando ele é criado sem um push novo.
+
 ## Limites importantes
 
 O plano gratuito do Supabase inclui 500 MB de banco, 50 mil usuários ativos

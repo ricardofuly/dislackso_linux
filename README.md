@@ -11,7 +11,7 @@ sua tela.
 
 ## Download
 
-[**Baixar DiSlackso para Windows**](https://github.com/spikeleez/dislackso/releases/latest/download/DiSlackso-Setup-3.2.0.exe) | [Versão Portátil (.zip)](https://github.com/spikeleez/dislackso/releases/latest/download/DiSlackso-portable-3.2.0.zip)
+[**Baixar DiSlackso para Windows**](https://github.com/spikeleez/dislackso/releases/latest/download/DiSlackso-Setup-3.3.0.exe) | [Versão Portátil (.zip)](https://github.com/spikeleez/dislackso/releases/latest/download/DiSlackso-portable-3.3.0.zip)
 
 Você pode instalar o app no seu computador e se conectar diretamente aos servidores na nuvem com persistência de dados.
 
@@ -29,11 +29,9 @@ npm install
 npm run desktop
 ```
 
-Abre o lançador, onde você escolhe:
-
-- **Hospedar aqui** — seu PC vira o servidor. Um botão cria um link público (HTTPS) para os
-  amigos entrarem de qualquer lugar.
-- **Conectar** — entrar num servidor que já existe.
+O app conecta direto no servidor na nuvem (Render + Supabase, veja
+[Nuvem](#nuvem-sem-depender-do-pc-de-alguém) mais abaixo) — todo mundo entra pelo mesmo
+endereço, sem precisar deixar o próprio PC ligado. Basta entrar com nickname e senha.
 
 O app tem duas vantagens sobre o navegador: **seletor de tela próprio** com miniaturas, e
 **áudio do sistema no Windows** sem depender da caixinha do Chrome.
@@ -47,7 +45,7 @@ npm run portable
 ```
 
 Sai `dist/DiSlackso-portable/` (~277 MB). Zipe a pasta e mande; eles rodam `DiSlackso.exe`
-direto, escolhem "Conectar" e colam o seu link.
+direto e entram com nickname e senha — o app já sabe pra qual servidor ir.
 
 **Instalador .exe**:
 
@@ -55,7 +53,7 @@ direto, escolhem "Conectar" e colam o seu link.
 npm run build
 ```
 
-Gera `dist/DiSlackso-Setup-3.0.0.exe` (~79 MB). Instalador comum: escolhe pasta, cria atalho,
+Gera `dist/DiSlackso-Setup-3.3.0.exe` (~79 MB). Instalador comum: escolhe pasta, cria atalho,
 desinstala pelo Painel de Controle.
 
 > **Sobre o erro "Cannot create symbolic link"**
@@ -111,6 +109,10 @@ não enxergam a versão nova. O `.blockmap` é o que permite o download incremen
 > O repositório precisa ser **público**. O atualizador roda na máquina dos seus amigos, sem
 > autenticação, e o GitHub responde 404 em repositório privado — não há configuração no app
 > que contorne isso, e embutir um token exporia o código a quem tiver o `.exe`.
+
+Publicar um Release também redeploya sozinho o servidor na nuvem (Render + Supabase, veja
+abaixo): um workflow do GitHub Actions dispara o deploy hook do Render assim que o Release
+sai. Configuração em [DEPLOY.md](DEPLOY.md#deploy-automático-a-cada-release).
 
 ### Pelo navegador
 
@@ -174,6 +176,21 @@ TURN_URL=turn:host:3478 TURN_USER=usuario TURN_PASS=senha npm start
 
 Metered, Twilio e Xirsys têm plano gratuito. Em **Status**, dentro da sala, dá para ver qual
 rota cada conexão está usando.
+
+---
+
+## Conta
+
+Entrar exige **nickname e senha** — sem e-mail. A conta fica salva no banco (Supabase, na
+nuvem), não no navegador: o mesmo login funciona em qualquer computador ou no app desktop.
+Quem já usava o app antes dessa versão (sem senha nenhuma) vê, na aba "Criar conta", uma
+opção pra proteger a conta que já existia com um nickname e senha novos — os servidores e o
+avatar continuam os mesmos.
+
+No app desktop, **Ctrl+Alt+Shift+D** abre uma janela própria de desenvolvedor, protegida por
+senha (padrão `dislackso-dev`, troque assim que entrar — a opção fica na própria janela). Lá
+dá pra sobrescrever o servidor usado pelo app, ligar/desligar aceleração de hardware e
+transparência, forçar checagem de atualização, abrir a pasta de dados e limpar o cache local.
 
 ---
 
@@ -247,27 +264,30 @@ miniaturas para o palco não sumir.
 ## Como está montado
 
 ```
-server/index.js        Express + Socket.IO: servidores, convites, perfis, signaling
+server/index.js        Express + Socket.IO: contas, servidores, convites, perfis, signaling
 server.js              sobe o servidor sozinho (modo navegador)
-desktop/main.js        Electron: janela, servidor embutido, túnel, captura, atualização
+desktop/main.js        Electron: janela, captura, atualização, painel de desenvolvedor
 desktop/preload.js     ponte segura entre a interface e o Electron
-desktop/launcher.html  tela de escolher hospedar/conectar
+desktop/dev-window.html/js  janela de desenvolvedor (protegida por senha)
+desktop/dev-preload.js ponte isolada da janela de desenvolvedor
 public/css/theme.css   tokens de design e os quatro temas
 public/css/app.css     layout e componentes
 public/css/motion.css  animações
+public/js/config.js    endereço do servidor na nuvem (Render)
 public/js/icons.js     ícones em SVG inline (sem emoji, sem CDN)
-public/js/util.js      DOM, avisos, modais, upload, persistência
+public/js/util.js      DOM, avisos, modais, upload, cache local
 public/js/settings.js  preferências e sua aplicação no documento
 public/js/rtc.js       motor WebRTC: negociação, codecs, bitrate, microfone
 public/js/annotate.js  camada de rabisco
 public/js/updater.js   tela de atualização do aplicativo
 public/js/screens.js   configurações, perfil, seletor de telas
-public/js/app.js       interface, salas, destaque
+public/js/app.js       login, interface, salas, membros, destaque
 scripts/gen-cert.js    certificado HTTPS local
 scripts/gen-icon.js    ícone PNG + ICO, sem dependência de imagem
 scripts/prep-build.js  conserta o cache do electron-builder no Windows
 scripts/pack-portable.js  monta a versão portátil
-data/                  banco (db.json) e imagens enviadas
+.github/workflows/render-deploy.yml  redeploya o Render a cada Release
+data/                  banco (db.json) e imagens enviadas, quando sem Supabase
 ```
 
 Os detalhes que fazem a qualidade, em `public/js/rtc.js`:
@@ -287,11 +307,15 @@ Os detalhes que fazem a qualidade, em `public/js/rtc.js`:
 
 ## Sobre segurança
 
-Não há senha: o convite **é** a credencial. Quem tiver o código entra. Se um link vazar, use
-*Gerar novo convite* — o antigo morre na hora.
+Entrar no app exige nickname e senha (guardada como hash `scrypt`, nunca em texto puro). Já
+entrar num **servidor** continua sendo por convite: o código **é** a credencial daquele
+servidor específico, e quem tiver o link entra. Se um link vazar, use *Gerar novo convite* —
+o antigo morre na hora.
 
 Uploads aceitam só PNG, JPG, GIF e WEBP até 12 MB, e o servidor só grava caminhos que ele
 mesmo gerou (não dá para apontar o avatar para uma URL externa).
 
-Os dados ficam em `data/`, em texto puro, na sua máquina. É o modelo certo para um grupo de
-amigos; não é o certo para algo público.
+Sem Supabase configurado, os dados ficam em `data/`, em texto puro, na sua máquina — modelo
+certo para um grupo de amigos rodando localmente, não para algo público. Com Supabase (veja
+[DEPLOY.md](DEPLOY.md)), o mesmo estado vive no Postgres deles, sob as políticas de acesso
+que só o servidor (via `service_role`) enxerga.

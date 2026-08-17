@@ -202,7 +202,7 @@ const SettingsUI = {
     const card = el('div', 'profile-card');
     card.style.marginBottom = '26px';
     card.innerHTML = `
-      <div class="profile-banner" style="${me.banner ? `background-image:url('${esc(me.banner)}')` : `background:${esc(me.accent || me.color)}`}"></div>
+      <div class="profile-banner" style="${me.banner ? `background-image:url('${assetUrl(esc(me.banner))}')` : `background:${esc(me.accent || me.color)}`}"></div>
       <div class="profile-head">
         ${avatarHTML(me, 'xl')}
         <div class="profile-name">${esc(me.name)}</div>
@@ -248,8 +248,8 @@ const SettingsUI = {
     const uploadBlock = ({ kind, current, maxMB, label, preview }) => {
       const wrap = el('div', kind === 'avatar' ? 'upload-row' : '');
       const prev = el('div', 'upload-preview' + (kind === 'banner' ? ' banner' : ''));
-      if (current) prev.style.backgroundImage = `url('${current}')`;
-      else {
+      if (current) prev.style.backgroundImage = `url('${assetUrl(current)}')`;
+      else if (preview.bg) {
         prev.style.background = preview.bg;
         prev.textContent = preview.text;
       }
@@ -642,44 +642,14 @@ const SettingsUI = {
 
     const status = el('div', 'statbox');
     status.textContent = [
-      `Hospedando aqui : ${info.hosting ? 'sim' : 'não'}`,
-      info.hostInfo ? `Endereço local  : ${info.hostInfo.url}` : null,
-      info.hostInfo && info.hostInfo.lan.length ? `Na rede         : ${info.hostInfo.lan.join('\n                  ')}` : null,
-      info.tunnelUrl ? `Link público    : ${info.tunnelUrl}` : null,
-      `Dados em        : ${info.dataDir}`,
-    ].filter(Boolean).join('\n');
+      `Servidor : ${window.ENV && window.ENV.SERVER_URL ? window.ENV.SERVER_URL : 'endereço padrão'}`,
+      `Dados em : ${info.dataDir}`,
+    ].join('\n');
     box.appendChild(row({ title: 'Servidor', desc: 'Situação atual desta instalação.', control: status, stack: true }));
 
-    if (info.hosting) {
-      const btns = el('div');
-      btns.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap';
-      if (!info.tunnelUrl) {
-        const t = iconButton('link', 'Criar link público', 'btn btn-primary');
-        t.onclick = async () => {
-          t.disabled = true;
-          t.innerHTML = '<span class="spinner"></span><span>Abrindo…</span>';
-          try {
-            const url = await window.desktop.tunnelStart(info.hostInfo.url);
-            copyText(url, 'Link público copiado!');
-            this.render();
-          } catch (err) {
-            toast('Falhou: ' + (err.message || err));
-            t.disabled = false;
-            t.innerHTML = `<span class="i">${icon('link', 17)}</span><span>Criar link público</span>`;
-          }
-        };
-        btns.appendChild(t);
-      } else {
-        const c = iconButton('copy', 'Copiar link público', 'btn btn-primary');
-        c.onclick = () => copyText(info.tunnelUrl, 'Link copiado!');
-        btns.appendChild(c);
-      }
-      box.appendChild(row({ title: 'Link para os amigos', desc: 'Endereço HTTPS que funciona de qualquer lugar.', control: btns, stack: true }));
-    }
-
-    const home = iconButton('home', 'Voltar à tela inicial');
-    home.onclick = () => window.desktop.goHome();
-    box.appendChild(row({ title: 'Trocar de servidor', desc: 'Encerra a sessão e volta para a escolha de hospedar/conectar.', control: home }));
+    const reload = iconButton('refresh', 'Recarregar o app');
+    reload.onclick = () => window.desktop.goHome();
+    box.appendChild(row({ title: 'Recarregar', desc: 'Recarrega a interface — útil depois de trocar o servidor no painel de desenvolvedor.', control: reload }));
   },
 
   /* ------------------------------------------------------ atualizações - */
@@ -796,7 +766,7 @@ function teclaNome(code) {
 
 function showProfile(user) {
   const bannerStyle = user.banner
-    ? `background-image:url('${esc(user.banner)}')`
+    ? `background-image:url('${assetUrl(esc(user.banner))}')`
     : `background:${esc(user.accent || user.color)}`;
 
   // O <h2> fica vazio de propósito: o CSS esconde `h2:empty`, então o banner

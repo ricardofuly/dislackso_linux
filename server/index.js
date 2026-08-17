@@ -44,6 +44,33 @@ function inviteCode(len = 8) {
   return out;
 }
 
+/* ------------------------------------------------------------- senha --- */
+
+/** scrypt do Node builtin: sem dependência nativa, empacota bem no Electron. */
+function hashPassword(password) {
+  const salt = crypto.randomBytes(16).toString('hex');
+  const hash = crypto.scryptSync(String(password), salt, 64).toString('hex');
+  return `${salt}:${hash}`;
+}
+
+function verifyPassword(password, stored) {
+  const [salt, hash] = String(stored || '').split(':');
+  if (!salt || !hash) return false;
+  const check = crypto.scryptSync(String(password || ''), salt, 64);
+  const expected = Buffer.from(hash, 'hex');
+  if (check.length !== expected.length) return false;
+  return crypto.timingSafeEqual(check, expected);
+}
+
+function newToken() {
+  return crypto.randomBytes(32).toString('hex');
+}
+
+const USERNAME_RE = /^[a-zA-Z0-9_]{3,20}$/;
+function isValidUsername(v) {
+  return USERNAME_RE.test(String(v || ''));
+}
+
 function colorFor(id) {
   let h = 0;
   for (const ch of String(id)) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
@@ -91,7 +118,7 @@ function createServer(options = {}) {
 
   /* ---------------------------------------------------------- storage --- */
 
-  let db = { users: {}, guilds: {} };
+  let db = { users: {}, guilds: {}, usernames: {} };
   try {
     if (fs.existsSync(DB_FILE)) db = JSON.parse(fs.readFileSync(DB_FILE, 'utf8'));
   } catch (err) {
@@ -99,6 +126,7 @@ function createServer(options = {}) {
   }
   db.users = db.users || {};
   db.guilds = db.guilds || {};
+  db.usernames = db.usernames || {};
   for (const guild of Object.values(db.guilds)) {
     guild.channels = (guild.channels || []).map(normalizeChannel);
   }
@@ -123,6 +151,7 @@ function createServer(options = {}) {
         db = rows[0].data;
         db.users = db.users || {};
         db.guilds = db.guilds || {};
+        db.usernames = db.usernames || {};
         for (const guild of Object.values(db.guilds)) guild.channels = (guild.channels || []).map(normalizeChannel);
         console.log('[db] estado restaurado do Supabase');
       }
@@ -165,10 +194,13 @@ function createServer(options = {}) {
 
   /* ----------------------------------------------------------- perfis --- */
 
-  function defaultUser(id, name) {
+  function defaultUser(id, username, name) {
     return {
       id,
-      name: cleanText(name, 32, 'Anonimo'),
+      username,
+      passwordHash: '',
+      token: '',
+      name: cleanText(name || username, 32, 'Anonimo'),
       color: colorFor(id),
       accent: colorFor(id),
       avatar: '',
@@ -181,9 +213,10 @@ function createServer(options = {}) {
 
   function publicUser(userId) {
     const u = db.users[userId];
-    if (!u) return { id: userId, name: 'Desconhecido', color: colorFor(userId), accent: colorFor(userId), avatar: '', banner: '', bio: '', pronouns: '' };
+    if (!u) return { id: userId, username: '', name: 'Desconhecido', color: colorFor(userId), accent: colorFor(userId), avatar: '', banner: '', bio: '', pronouns: '' };
     return {
       id: u.id,
+      username: u.username || '',
       name: u.name,
       color: u.color,
       accent: u.accent || u.color,
@@ -306,6 +339,20 @@ function createServer(options = {}) {
   const pushPresence = (guildId) =>
     io.to(guildRoom(guildId)).emit('presence:update', { guildId, presence: guildPresence(guildId) });
 
+  /** Quem do servidor está com o app aberto agora (não só em sala de voz). */
+  function guildOnlineIds(guildId) {
+    const room = io.sockets.adapter.rooms.get(guildRoom(guildId));
+    const ids = new Set();
+    for (const sid of room || []) {
+      const s = sessions.get(sid);
+      if (s) ids.add(s.userId);
+    }
+    return [...ids];
+  }
+
+  const pushOnline = (guildId) =>
+    io.to(guildRoom(guildId)).emit('guild:online', { guildId, online: guildOnlineIds(guildId) });
+
   function pushGuild(guildId) {
     const guild = db.guilds[guildId];
     if (guild) io.to(guildRoom(guildId)).emit('guild:update', publicGuild(guild));
@@ -335,25 +382,74 @@ function createServer(options = {}) {
   /** Servidores dos quais o usuario participa. */
   const guildsOf = (userId) => Object.values(db.guilds).filter((g) => g.members.includes(userId));
 
+  /** Abre a sessão desse socket pra esse usuário e devolve o payload que login/registro/hello respondem. */
+  function establishSession(socket, user) {
+    sessions.set(socket.id, { userId: user.id, room: null, state: emptyState() });
+    const guilds = guildsOf(user.id);
+    for (const g of guilds) socket.join(guildRoom(g.id));
+    const payload = { user: publicUser(user.id), guilds: guilds.map(publicGuild), iceServers, sid: socket.id, token: user.token };
+    for (const g of guilds) { pushPresence(g.id); pushOnline(g.id); }
+    return payload;
+  }
+
   io.on('connection', (socket) => {
-    socket.on('hello', ({ userId, name } = {}, cb) => guard(cb, () => {
-      let user = userId && db.users[userId];
-      if (!user) {
-        const id = uid();
-        user = defaultUser(id, name);
-        db.users[id] = user;
-      } else if (name) {
-        user.name = cleanText(name, 32, user.name);
+    /* --------------------------------------------------------- conta --- */
+
+    // Retomada silenciosa de sessão (o cliente já tem userId+token salvos).
+    socket.on('hello', ({ userId, token } = {}, cb) => guard(cb, () => {
+      const user = userId && db.users[userId];
+      if (!user || !user.token || !token || user.token !== token) {
+        throw new Error('auth_required');
       }
       save();
+      cb(establishSession(socket, user));
+    }));
 
-      sessions.set(socket.id, { userId: user.id, room: null, state: emptyState() });
+    socket.on('auth:register', ({ username, password, name } = {}, cb) => guard(cb, () => {
+      if (!isValidUsername(username)) throw new Error('Nickname precisa ter de 3 a 20 letras, números ou _.');
+      if (!password || String(password).length < 6) throw new Error('A senha precisa ter pelo menos 6 caracteres.');
+      const key = String(username).toLowerCase();
+      if (db.usernames[key]) throw new Error('Esse nickname já está em uso.');
 
-      const guilds = guildsOf(user.id);
-      for (const g of guilds) socket.join(guildRoom(g.id));
+      const id = uid();
+      const user = defaultUser(id, username, name);
+      user.passwordHash = hashPassword(password);
+      user.token = newToken();
+      db.users[id] = user;
+      db.usernames[key] = id;
+      save();
+      cb(establishSession(socket, user));
+    }));
 
-      cb({ user: publicUser(user.id), guilds: guilds.map(publicGuild), iceServers, sid: socket.id });
-      for (const g of guilds) pushPresence(g.id);
+    socket.on('auth:login', ({ username, password } = {}, cb) => guard(cb, () => {
+      const key = String(username || '').toLowerCase();
+      const id = db.usernames[key];
+      const user = id && db.users[id];
+      if (!user || !user.passwordHash || !verifyPassword(password, user.passwordHash)) {
+        throw new Error('Nickname ou senha incorretos.');
+      }
+      user.token = newToken();
+      save();
+      cb(establishSession(socket, user));
+    }));
+
+    // Migra uma conta anônima antiga (de antes do login existir) pro novo sistema,
+    // preservando servidores e avatar — só funciona enquanto ela não tiver senha.
+    socket.on('auth:claim', ({ userId, username, password } = {}, cb) => guard(cb, () => {
+      const user = userId && db.users[userId];
+      if (!user) throw new Error('Conta não encontrada.');
+      if (user.passwordHash) throw new Error('Essa conta já tem senha; use Entrar.');
+      if (!isValidUsername(username)) throw new Error('Nickname precisa ter de 3 a 20 letras, números ou _.');
+      if (!password || String(password).length < 6) throw new Error('A senha precisa ter pelo menos 6 caracteres.');
+      const key = String(username).toLowerCase();
+      if (db.usernames[key]) throw new Error('Esse nickname já está em uso.');
+
+      user.username = username;
+      user.passwordHash = hashPassword(password);
+      user.token = newToken();
+      db.usernames[key] = user.id;
+      save();
+      cb(establishSession(socket, user));
     }));
 
     /* ------------------------------------------------------- perfil --- */
@@ -407,6 +503,7 @@ function createServer(options = {}) {
       save();
       socket.join(guildRoom(guild.id));
       cb({ guild: publicGuild(guild) });
+      pushOnline(guild.id);
     }));
 
     socket.on('guild:join', ({ invite } = {}, cb) => guard(cb, () => {
@@ -423,6 +520,7 @@ function createServer(options = {}) {
       cb({ guild: publicGuild(guild) });
       pushGuild(guild.id);
       pushPresence(guild.id);
+      pushOnline(guild.id);
     }));
 
     socket.on('guild:update', ({ guildId, name, icon } = {}, cb) => guard(cb, () => {
@@ -453,6 +551,7 @@ function createServer(options = {}) {
       cb({ ok: true });
       pushGuild(guildId);
       pushPresence(guildId);
+      pushOnline(guildId);
     }));
 
     socket.on('guild:delete', ({ guildId } = {}, cb) => guard(cb, () => {
@@ -601,8 +700,13 @@ function createServer(options = {}) {
     });
 
     socket.on('disconnect', () => {
+      const s = sessions.get(socket.id);
+      const affected = s ? guildsOf(s.userId) : [];
       leaveVoice(socket);
       sessions.delete(socket.id);
+      // Recalcula depois de apagar a sessão: se havia outra aba/dispositivo
+      // conectado com o mesmo usuário, ele continua aparecendo online.
+      for (const g of affected) pushOnline(g.id);
     });
   });
 

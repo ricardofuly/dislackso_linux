@@ -35,12 +35,7 @@ contextBridge.exposeInMainWorld('desktop', {
 
   restart: () => ipcRenderer.invoke('app:restart'),
   goHome: () => ipcRenderer.invoke('app:home'),
-  open: (url) => ipcRenderer.invoke('nav:open', url),
   openExternal: (url) => ipcRenderer.invoke('shell:openExternal', url),
-
-  hostStart: (opts) => ipcRenderer.invoke('host:start', opts || {}),
-  tunnelStart: (url) => ipcRenderer.invoke('tunnel:start', { url }),
-  tunnelStop: () => ipcRenderer.invoke('tunnel:stop'),
 
   /**
    * Registra quem mostra o seletor de telas. Recebe a lista de fontes e

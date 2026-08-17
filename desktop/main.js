@@ -16,10 +16,27 @@
 const { app, BrowserWindow, ipcMain, session, desktopCapturer, shell, Menu, dialog } = require('electron');
 const path = require('path');
 const fs = require('fs');
+const crypto = require('crypto');
 const { spawn } = require('child_process');
 const { autoUpdater } = require('electron-updater');
 
 const CONFIG_FILE = path.join(app.getPath('userData'), 'config.json');
+const DEFAULT_DEV_PASSWORD = 'dislackso-dev';
+
+/** Mesmo esquema de server/index.js (scrypt builtin, sem dependência nativa). */
+function hashSecret(value) {
+  const salt = crypto.randomBytes(16).toString('hex');
+  const hash = crypto.scryptSync(String(value), salt, 64).toString('hex');
+  return `${salt}:${hash}`;
+}
+function verifySecret(value, stored) {
+  const [salt, hash] = String(stored || '').split(':');
+  if (!salt || !hash) return false;
+  const check = crypto.scryptSync(String(value || ''), salt, 64);
+  const expected = Buffer.from(hash, 'hex');
+  return check.length === expected.length && crypto.timingSafeEqual(check, expected);
+}
+
 const DEFAULTS = {
   mode: null,                  // 'host' | 'connect'
   url: '',
@@ -27,6 +44,8 @@ const DEFAULTS = {
   hardwareAcceleration: true,
   transparency: false,
   lastHostTunnel: false,
+  devPasswordHash: '',         // preenchido no primeiro boot, ver abaixo
+  serverUrlOverride: '',       // definido pelo painel de desenvolvedor
 };
 
 /* ------------------------------------------------------------ config --- */
@@ -50,7 +69,10 @@ function writeConfig(patch) {
   return next;
 }
 
-const config = readConfig();
+let config = readConfig();
+if (!config.devPasswordHash) {
+  config = writeConfig({ devPasswordHash: hashSecret(DEFAULT_DEV_PASSWORD) });
+}
 
 // Precisa acontecer antes do app ficar pronto.
 if (!config.hardwareAcceleration) app.disableHardwareAcceleration();
@@ -58,9 +80,8 @@ if (!config.hardwareAcceleration) app.disableHardwareAcceleration();
 /* ------------------------------------------------------------ estado --- */
 
 let win = null;
-let hosted = null;      // instancia do servidor embutido
-let tunnel = null;      // processo do cloudflared
-let tunnelUrl = '';
+let devWin = null;
+let devWinAuthed = false;
 
 if (!app.requestSingleInstanceLock()) {
   app.quit();
@@ -92,7 +113,8 @@ function createWindow() {
     },
   });
 
-  win.once('ready-to-show', () => win.show());
+  win.show();
+  win.webContents.openDevTools({ mode: 'detach' });
   win.on('closed', () => { win = null; });
 
   // Links externos abrem no navegador do sistema, nunca dentro do app.
@@ -108,13 +130,39 @@ function createWindow() {
       win.webContents.toggleDevTools();
     }
     if (input.control && input.key.toLowerCase() === 'r') win.webContents.reload();
+    if (input.control && input.alt && input.shift && input.key.toLowerCase() === 'd') openDevWindow();
   });
 
   goHome();
 }
 
 function goHome() {
-  if (win) win.loadFile(path.join(__dirname, 'launcher.html'));
+  if (win) win.loadFile(path.join(__dirname, '..', 'public', 'index.html'));
+}
+
+/* --------------------------------------------------- janela dev ------- */
+
+/** Atalho Ctrl+Alt+Shift+D na janela principal. Senha própria, isolada por preload. */
+function openDevWindow() {
+  if (devWin) { devWin.focus(); return; }
+  devWinAuthed = false;
+  devWin = new BrowserWindow({
+    width: 720,
+    height: 780,
+    minWidth: 520,
+    minHeight: 480,
+    backgroundColor: '#1a1b1e',
+    title: 'DiSlackso — Desenvolvedor',
+    webPreferences: {
+      preload: path.join(__dirname, 'dev-preload.js'),
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: false,
+    },
+  });
+  devWin.setMenuBarVisibility(false);
+  devWin.loadFile(path.join(__dirname, 'dev-window.html'));
+  devWin.on('closed', () => { devWin = null; devWinAuthed = false; });
 }
 
 /* -------------------------------------------------- seletor de tela --- */
@@ -170,64 +218,7 @@ function installDisplayMediaHandler() {
   }, { useSystemPicker: false });
 }
 
-/* ------------------------------------------------------- host + tunel -- */
 
-async function startHost(port) {
-  if (hosted) return hosted.info;
-  // index.js explícito: "../server" resolveria para o shim ../server.js.
-  const { createServer } = require(path.join(__dirname, '..', 'server', 'index.js'));
-  const instance = createServer({
-    port: Number(port) || 3000,
-    dataDir: path.join(app.getPath('userData'), 'data'),
-  });
-  const info = await instance.listen();
-  hosted = { instance, info };
-  return info;
-}
-
-async function stopHost() {
-  if (!hosted) return;
-  await hosted.instance.close().catch(() => {});
-  hosted = null;
-}
-
-function startTunnel(targetUrl) {
-  return new Promise((resolve, reject) => {
-    if (tunnelUrl) return resolve(tunnelUrl);
-    let child;
-    try {
-      child = spawn('cloudflared', ['tunnel', '--url', targetUrl], { shell: true });
-    } catch (err) {
-      return reject(new Error('cloudflared nao encontrado'));
-    }
-    tunnel = child;
-
-    let settled = false;
-    const onData = (buf) => {
-      const text = buf.toString();
-      const m = text.match(/https:\/\/[a-z0-9-]+\.trycloudflare\.com/i);
-      if (m && !settled) {
-        settled = true;
-        tunnelUrl = m[0];
-        resolve(tunnelUrl);
-      }
-    };
-    child.stdout.on('data', onData);
-    child.stderr.on('data', onData);
-    child.on('error', () => { if (!settled) { settled = true; reject(new Error('cloudflared nao encontrado no PATH')); } });
-    child.on('exit', () => { tunnel = null; tunnelUrl = ''; });
-
-    setTimeout(() => {
-      if (!settled) { settled = true; reject(new Error('o tunel demorou demais para responder')); }
-    }, 40000);
-  });
-}
-
-function stopTunnel() {
-  if (tunnel) { try { tunnel.kill(); } catch {} }
-  tunnel = null;
-  tunnelUrl = '';
-}
 
 /* ------------------------------------------------------- atualização -- */
 
@@ -319,32 +310,59 @@ autoUpdater.on('error', (err) => {
 ipcMain.handle('config:get', () => readConfig());
 ipcMain.handle('config:set', (_e, patch) => writeConfig(patch || {}));
 
-ipcMain.handle('app:restart', () => { app.relaunch(); app.exit(0); });
-ipcMain.handle('app:home', () => { stopTunnel(); stopHost(); goHome(); });
-ipcMain.handle('app:info', () => ({
-  version: app.getVersion(),
-  electron: process.versions.electron,
-  chrome: process.versions.chrome,
-  node: process.versions.node,
-  platform: process.platform,
-  dataDir: path.join(app.getPath('userData'), 'data'),
-  hosting: !!hosted,
-  hostInfo: hosted ? hosted.info : null,
-  tunnelUrl,
-}));
+function buildAppInfo() {
+  return {
+    version: app.getVersion(),
+    electron: process.versions.electron,
+    chrome: process.versions.chrome,
+    node: process.versions.node,
+    platform: process.platform,
+    dataDir: path.join(app.getPath('userData'), 'data'),
+    hosting: false,
+    hostInfo: null,
+    tunnelUrl: '',
+    serverUrlOverride: readConfig().serverUrlOverride || '',
+  };
+}
 
-ipcMain.handle('host:start', async (_e, { port } = {}) => {
-  const info = await startHost(port);
-  writeConfig({ mode: 'host', port: info.port });
-  return info;
+ipcMain.handle('app:restart', () => { app.relaunch(); app.exit(0); });
+ipcMain.handle('app:home', () => { goHome(); });
+ipcMain.handle('app:info', () => buildAppInfo());
+
+/* ------------------------------------------------ painel de dev — IPC -- */
+
+function requireDevAuth() {
+  if (!devWinAuthed) throw new Error('não autenticado no painel de desenvolvedor');
+}
+
+ipcMain.handle('dev:auth', (_e, password) => {
+  devWinAuthed = verifySecret(password, readConfig().devPasswordHash);
+  return devWinAuthed;
 });
 
-ipcMain.handle('tunnel:start', async (_e, { url } = {}) => startTunnel(url));
-ipcMain.handle('tunnel:stop', () => { stopTunnel(); return true; });
+ipcMain.handle('dev:changePassword', (_e, { current, next } = {}) => {
+  requireDevAuth();
+  if (!verifySecret(current, readConfig().devPasswordHash)) return { ok: false, error: 'Senha atual incorreta.' };
+  if (!next || String(next).length < 6) return { ok: false, error: 'A nova senha precisa ter pelo menos 6 caracteres.' };
+  writeConfig({ devPasswordHash: hashSecret(next) });
+  return { ok: true };
+});
 
-ipcMain.handle('nav:open', (_e, url) => {
-  if (!win || !/^https?:\/\//i.test(String(url))) throw new Error('endereco invalido');
-  win.loadURL(url);
+ipcMain.handle('dev:getConfig', () => { requireDevAuth(); return readConfig(); });
+ipcMain.handle('dev:setConfig', (_e, patch) => { requireDevAuth(); return writeConfig(patch || {}); });
+ipcMain.handle('dev:appInfo', () => { requireDevAuth(); return buildAppInfo(); });
+
+ipcMain.handle('dev:openDataFolder', () => {
+  requireDevAuth();
+  const dir = path.join(app.getPath('userData'), 'data');
+  fs.mkdirSync(dir, { recursive: true });
+  shell.openPath(dir);
+});
+
+ipcMain.handle('dev:clearLocalData', async () => {
+  requireDevAuth();
+  await session.defaultSession.clearStorageData({ storages: ['localstorage', 'cookies', 'cachestorage'] });
+  if (win && !win.isDestroyed()) win.reload();
   return true;
 });
 
@@ -385,8 +403,6 @@ ipcMain.handle('update:download', async () => {
 });
 
 ipcMain.handle('update:install', () => {
-  stopTunnel();
-  stopHost();
   // isSilent=false mostra o instalador; isForceRunAfter=true reabre o app.
   setImmediate(() => autoUpdater.quitAndInstall(false, true));
   return true;
@@ -414,9 +430,5 @@ app.whenReady().then(() => {
 });
 
 app.on('window-all-closed', () => {
-  stopTunnel();
-  stopHost();
   if (process.platform !== 'darwin') app.quit();
 });
-
-app.on('before-quit', () => { stopTunnel(); });

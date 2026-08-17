@@ -14,11 +14,30 @@ const initials = (name) => String(name || '').trim().slice(0, 2).toUpperCase() |
 
 const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
 
+function assetUrl(path) {
+  if (!path) return '';
+  if (path.startsWith('data:') || path.startsWith('http')) return path;
+  const base = window.ENV && window.ENV.SERVER_URL ? window.ENV.SERVER_URL : '';
+  return base + path;
+}
+
+/**
+ * Base pra montar links de convite. No navegador, hospedado pelo próprio
+ * servidor, `location.origin` já é o endereço certo. No app desktop a
+ * página é carregada com `file://` (não existe mais servidor embutido), e
+ * `location.origin` aponta pra lugar nenhum — por isso usamos o mesmo
+ * `SERVER_URL` da conexão sempre que ele existir.
+ */
+function serverOrigin() {
+  const base = window.ENV && window.ENV.SERVER_URL;
+  return base || location.origin;
+}
+
 /** HTML de um avatar, com imagem quando o usuário tiver uma. */
 function avatarHTML(user, size = '', extraClass = '') {
   const cls = ['avatar', size, extraClass].filter(Boolean).join(' ');
   if (user && user.avatar) {
-    return `<span class="${cls}"><img src="${esc(user.avatar)}" alt=""></span>`;
+    return `<span class="${cls}"><img src="${assetUrl(esc(user.avatar))}" alt=""></span>`;
   }
   const bg = (user && user.color) || 'var(--accent)';
   return `<span class="${cls}" style="background:${esc(bg)}">${esc(initials(user && user.name))}</span>`;
@@ -161,7 +180,8 @@ function pickImage({ maxBytes = 12 * 1024 * 1024 } = {}) {
 
 /** Envia o data URL ao servidor e devolve o caminho salvo (/uploads/...). */
 async function uploadImage(dataUrl, kind, userId) {
-  const res = await fetch('/api/upload', {
+  const serverUrl = window.ENV && window.ENV.SERVER_URL ? window.ENV.SERVER_URL : '';
+  const res = await fetch(serverUrl + '/api/upload', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ dataUrl, kind, userId }),
