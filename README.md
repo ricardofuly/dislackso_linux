@@ -9,6 +9,14 @@ sua tela.
 
 ---
 
+## Download
+
+[**Baixar DiSlackso para Windows**](https://github.com/spikeleez/dislackso/releases/latest/download/DiSlackso-Setup-3.2.0.exe) | [Versão Portátil (.zip)](https://github.com/spikeleez/dislackso/releases/latest/download/DiSlackso-portable-3.2.0.zip)
+
+Você pode instalar o app no seu computador e se conectar diretamente aos servidores na nuvem com persistência de dados.
+
+---
+
 ## Rodando
 
 ### Como app de PC (recomendado)
