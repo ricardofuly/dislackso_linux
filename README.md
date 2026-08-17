@@ -69,6 +69,41 @@ desinstala pelo Painel de Controle.
 > temporária e muda a cada tentativa — pré-extrair *nela* não adianta. O que vale é a pasta
 > final, com o nome versionado.
 
+### Atualizando
+
+A partir da 3.1.0 o app instalado **se atualiza sozinho**. Ele consulta os releases deste
+repositório, avisa quando há versão nova, e em *Configurações › Atualizações* você vê o que
+mudou, baixa com barra de progresso e reinicia quando quiser — o app reabre sozinho.
+
+Nada acontece sem você mandar: pergunta antes de baixar e pergunta de novo antes de
+reiniciar. Dá para desligar a verificação automática.
+
+O download aproveita o `.blockmap` e traz só os pedaços que mudaram, então costuma ser bem
+menor que o instalador inteiro.
+
+> A **versão portátil não se atualiza sozinha** — não existe instalador para rodar. O
+> empacotador grava um marcador `resources/PORTABLE` e o app detecta, avisa e leva até a
+> página de releases.
+
+**Para publicar uma versão nova:**
+
+```bash
+npm version minor && npm run build && npm run portable
+```
+
+Depois suba o release com os quatro arquivos que o atualizador precisa:
+
+```bash
+gh release create v3.2.0 dist/DiSlackso-Setup-*.exe dist/*.blockmap dist/latest.yml dist/DiSlackso-portable-*.zip --title "..." --notes "..."
+```
+
+O `latest.yml` é obrigatório: é o manifesto que o atualizador lê. Sem ele, os apps instalados
+não enxergam a versão nova. O `.blockmap` é o que permite o download incremental.
+
+> O repositório precisa ser **público**. O atualizador roda na máquina dos seus amigos, sem
+> autenticação, e o GitHub responde 404 em repositório privado — não há configuração no app
+> que contorne isso, e embutir um token exporia o código a quem tiver o `.exe`.
+
 ### Pelo navegador
 
 ```bash
@@ -196,7 +231,7 @@ miniaturas para o palco não sumir.
 ```
 server/index.js        Express + Socket.IO: servidores, convites, perfis, signaling
 server.js              sobe o servidor sozinho (modo navegador)
-desktop/main.js        Electron: janela, servidor embutido, túnel, captura de tela
+desktop/main.js        Electron: janela, servidor embutido, túnel, captura, atualização
 desktop/preload.js     ponte segura entre a interface e o Electron
 desktop/launcher.html  tela de escolher hospedar/conectar
 public/css/theme.css   tokens de design e os quatro temas
@@ -207,6 +242,7 @@ public/js/util.js      DOM, avisos, modais, upload, persistência
 public/js/settings.js  preferências e sua aplicação no documento
 public/js/rtc.js       motor WebRTC: negociação, codecs, bitrate, microfone
 public/js/annotate.js  camada de rabisco
+public/js/updater.js   tela de atualização do aplicativo
 public/js/screens.js   configurações, perfil, seletor de telas
 public/js/app.js       interface, salas, destaque
 scripts/gen-cert.js    certificado HTTPS local
