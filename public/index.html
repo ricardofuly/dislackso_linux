@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="escuro">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Discord2</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='24' fill='%235865f2'/><rect x='22' y='30' width='56' height='36' rx='6' fill='white'/></svg>">
+<link rel="stylesheet" href="css/theme.css">
+<link rel="stylesheet" href="css/app.css">
+<link rel="stylesheet" href="css/motion.css">
+</head>
+<body>
+
+<div class="shell">
+
+  <!-- barra de título (só no app desktop) -->
+  <div class="titlebar">
+    <b>Discord2</b>
+    <button class="tb-btn" id="tb-home" title="Trocar de servidor">⌂ início</button>
+  </div>
+
+  <div class="app">
+
+    <!-- coluna 1: servidores -->
+    <nav class="rail">
+      <div id="rail-list" class="rail-list"></div>
+      <div class="rail-sep"></div>
+      <button id="btn-create" class="rail-btn rail-add" title="Criar servidor">+</button>
+      <button id="btn-join" class="rail-btn rail-add" title="Entrar com convite">⤿</button>
+    </nav>
+
+    <!-- coluna 2: canais -->
+    <aside class="sidebar">
+      <header class="sidebar-head">
+        <span id="guild-name">Selecione um servidor</span>
+        <button id="btn-guild-menu" class="icon-btn" title="Opções do servidor">⋮</button>
+      </header>
+      <div id="guild-menu" class="popover hidden">
+        <button data-act="invite">Convidar amigos</button>
+        <button data-act="newchannel">Criar sala</button>
+        <button data-act="icon">Trocar ícone do servidor</button>
+        <button data-act="regen">Gerar novo convite</button>
+        <hr>
+        <button data-act="leave" class="danger">Sair do servidor</button>
+        <button data-act="delete" class="danger">Excluir servidor</button>
+      </div>
+
+      <div class="sidebar-body">
+        <div class="section-label">Salas de voz e tela</div>
+        <div id="channel-list"></div>
+      </div>
+
+      <footer class="userbar">
+        <div id="me-card" class="userbar-info" style="display:flex;align-items:center;gap:8px" title="Abrir minha conta">
+          <span id="me-avatar-slot"></span>
+          <div style="min-width:0">
+            <div id="me-name" class="userbar-name"></div>
+            <div id="me-status" class="userbar-status">Offline</div>
+          </div>
+        </div>
+        <button id="btn-settings" class="icon-btn" title="Configurações">⚙</button>
+      </footer>
+    </aside>
+
+    <!-- coluna 3: palco -->
+    <main class="stage">
+      <header class="stage-head">
+        <span class="stage-title" id="stage-title">Nenhuma sala</span>
+        <span class="stage-conn" id="stage-conn"></span>
+      </header>
+
+      <div id="stage-empty" class="stage-empty">
+        <div class="empty-art">
+          <svg viewBox="0 0 120 90" width="124" height="94" fill="none">
+            <rect x="4" y="6" width="112" height="70" rx="10" stroke="currentColor" stroke-width="4" opacity=".5"/>
+            <path d="M46 82h28M60 78v6" stroke="currentColor" stroke-width="4" stroke-linecap="round" opacity=".5"/>
+            <path d="M50 30l26 14-26 14z" fill="currentColor" opacity=".5"/>
+          </svg>
+        </div>
+        <h2 id="empty-title">Crie um servidor para começar</h2>
+        <p id="empty-sub">Servidores são privados: só entra quem tiver o link de convite.</p>
+      </div>
+
+      <div id="stage-wrap" class="stage-wrap hidden">
+        <div id="focus-main" class="focus-main hidden"></div>
+        <div id="filmstrip" class="filmstrip hidden"></div>
+        <div id="grid" class="grid"></div>
+      </div>
+
+      <div id="controls" class="controls hidden">
+        <button id="btn-mic" class="ctl" title="Microfone (M)">
+          <span class="ctl-ico" id="ico-mic">🎤</span><span class="ctl-txt">Microfone</span>
+        </button>
+        <button id="btn-screen" class="ctl" title="Compartilhar tela (S)">
+          <span class="ctl-ico">🖥</span><span class="ctl-txt" id="txt-screen">Compartilhar tela</span>
+        </button>
+        <button id="btn-quality" class="ctl" title="Qualidade da transmissão">
+          <span class="ctl-ico">⚙</span><span class="ctl-txt" id="txt-quality">1080p60</span>
+        </button>
+        <button id="btn-stats" class="ctl" title="Status da conexão">
+          <span class="ctl-ico">📊</span><span class="ctl-txt">Status</span>
+        </button>
+        <button id="btn-hangup" class="ctl ctl-danger" title="Sair da sala">
+          <span class="ctl-ico">✆</span><span class="ctl-txt">Sair</span>
+        </button>
+      </div>
+    </main>
+  </div>
+</div>
+
+<!-- tela de login -->
+<div id="gate" class="gate">
+  <div class="gate-card">
+    <svg viewBox="0 0 100 100" width="52" height="52"><rect width="100" height="100" rx="24" fill="#5865f2"/><rect x="22" y="30" width="56" height="36" rx="6" fill="#fff"/><rect x="42" y="70" width="16" height="6" rx="3" fill="#fff"/></svg>
+    <h1>Discord2</h1>
+    <p class="gate-sub">Servidores privados e compartilhamento de tela.</p>
+    <label for="gate-name">Como você quer ser chamado?</label>
+    <input id="gate-name" type="text" maxlength="32" placeholder="Seu apelido" autocomplete="nickname">
+    <button id="gate-go" class="btn btn-primary btn-block">Entrar</button>
+    <p class="gate-hint">Sem senha, sem e-mail. Seus servidores ficam guardados neste navegador.</p>
+  </div>
+</div>
+
+<!-- configurações -->
+<div id="settings" class="settings hidden"></div>
+
+<!-- modal genérico -->
+<div id="modal" class="modal hidden">
+  <div class="modal-card" id="modal-card">
+    <h2 id="modal-title"></h2>
+    <div id="modal-body"></div>
+    <div class="modal-actions">
+      <button id="modal-cancel" class="btn btn-ghost">Cancelar</button>
+      <button id="modal-ok" class="btn btn-primary">Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast hidden"></div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script src="js/util.js"></script>
+<script src="js/settings.js"></script>
+<script src="js/rtc.js"></script>
+<script src="js/annotate.js"></script>
+<script src="js/screens.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
