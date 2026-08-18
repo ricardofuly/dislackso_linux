@@ -138,6 +138,21 @@ function createServer(options = {}) {
   const supabaseKey = options.supabaseServiceKey || process.env.SUPABASE_SERVICE_ROLE_KEY || '';
   const supabaseRow = String(options.supabaseRow || process.env.SUPABASE_DB_ROW_ID || 'main');
   const useSupabase = !!(supabaseUrl && supabaseKey && typeof fetch === 'function');
+  let lastSupabaseError = null;
+  let lastSupabaseOkAt = null;
+
+  if (useSupabase && !/^https:\/\/[a-z0-9-]+\.supabase\.co$/.test(supabaseUrl)) {
+    console.warn(`[db] SUPABASE_URL não parece uma URL de projeto Supabase válida: "${supabaseUrl}" `
+      + '(esperado algo como https://xxxxxxxx.supabase.co, sem barra no final).');
+  }
+
+  /** "fetch failed" do Node não diz o motivo real — err.cause tem o erro de rede de verdade. */
+  function describeFetchError(err) {
+    const cause = err && err.cause;
+    const code = cause && cause.code;
+    if (code) return `${err.message} (${code}: ${cause.message || code})`;
+    return err.message;
+  }
 
   async function loadRemoteDb() {
     if (!useSupabase) return;
@@ -145,8 +160,10 @@ function createServer(options = {}) {
       const res = await fetch(`${supabaseUrl}/rest/v1/app_state?id=eq.${encodeURIComponent(supabaseRow)}&select=data`, {
         headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}` },
       });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text().catch(() => '')}`);
       const rows = await res.json();
+      lastSupabaseError = null;
+      lastSupabaseOkAt = new Date().toISOString();
       if (rows[0] && rows[0].data && typeof rows[0].data === 'object') {
         db = rows[0].data;
         db.users = db.users || {};
@@ -154,9 +171,12 @@ function createServer(options = {}) {
         db.usernames = db.usernames || {};
         for (const guild of Object.values(db.guilds)) guild.channels = (guild.channels || []).map(normalizeChannel);
         console.log('[db] estado restaurado do Supabase');
+      } else {
+        console.log('[db] Supabase conectado, mas ainda sem linha salva (id=' + supabaseRow + ') — começando do zero.');
       }
     } catch (err) {
-      console.error('[db] Supabase indisponível; usando cópia local:', err.message);
+      lastSupabaseError = describeFetchError(err);
+      console.error('[db] Supabase indisponível; usando cópia local:', lastSupabaseError);
     }
   }
 
@@ -173,9 +193,12 @@ function createServer(options = {}) {
         },
         body: JSON.stringify({ id: supabaseRow, data: db, updated_at: new Date().toISOString() }),
       });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text().catch(() => '')}`);
+      lastSupabaseError = null;
+      lastSupabaseOkAt = new Date().toISOString();
     } catch (err) {
-      console.error('[db] falha ao espelhar no Supabase:', err.message);
+      lastSupabaseError = describeFetchError(err);
+      console.error('[db] falha ao espelhar no Supabase:', lastSupabaseError);
     }
   }
 
@@ -277,8 +300,16 @@ function createServer(options = {}) {
   app.get('/api/health', (_req, res) => {
     // "supabase: false" com o servico no Render explica sozinho contas que
     // somem: sem espelhamento remoto, os dados vivem so no disco efemero e
-    // qualquer redeploy comeca do zero.
-    res.json({ ok: true, guilds: Object.keys(db.guilds).length, users: Object.keys(db.users).length, supabase: useSupabase });
+    // qualquer redeploy comeca do zero. "supabaseError" mostra por que a
+    // ultima tentativa de ler/gravar no Supabase falhou, se falhou.
+    res.json({
+      ok: true,
+      guilds: Object.keys(db.guilds).length,
+      users: Object.keys(db.users).length,
+      supabase: useSupabase,
+      supabaseError: lastSupabaseError,
+      supabaseLastOkAt: lastSupabaseOkAt,
+    });
   });
 
   /**
