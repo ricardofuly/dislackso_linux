@@ -527,6 +527,7 @@ class VoiceEngine {
     this.applyMicEnabled();
     this.publishState();
     this.emit('localchange');
+    feedback(this.micEnabled ? 'unmute' : 'mute');
     return this.micEnabled;
   }
 

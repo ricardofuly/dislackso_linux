@@ -11,7 +11,7 @@ sua tela.
 
 ## Download
 
-[**Baixar DiSlackso para Windows**](https://github.com/spikeleez/dislackso/releases/latest/download/DiSlackso-Setup-3.5.2.exe) | [Versão Portátil (.zip)](https://github.com/spikeleez/dislackso/releases/latest/download/DiSlackso-portable-3.5.2.zip) | [**Linux (.AppImage)**](https://github.com/spikeleez/dislackso/releases/latest/download/DiSlackso-3.5.2.AppImage) | [.rpm (Fedora e derivados)](https://github.com/spikeleez/dislackso/releases/latest/download/DiSlackso-3.5.2.rpm)
+[**Baixar DiSlackso para Windows**](https://github.com/spikeleez/dislackso/releases/latest/download/DiSlackso-Setup-3.5.3.exe) | [Versão Portátil (.zip)](https://github.com/spikeleez/dislackso/releases/latest/download/DiSlackso-portable-3.5.3.zip) | [**Linux (.AppImage)**](https://github.com/spikeleez/dislackso/releases/latest/download/DiSlackso-3.5.3.AppImage) | [.rpm (Fedora e derivados)](https://github.com/spikeleez/dislackso/releases/latest/download/DiSlackso-3.5.3.rpm)
 
 Você pode instalar o app no seu computador e se conectar diretamente aos servidores na nuvem com persistência de dados.
 
@@ -53,7 +53,7 @@ direto e entram com nickname e senha — o app já sabe pra qual servidor ir.
 npm run build
 ```
 
-Gera `dist/DiSlackso-Setup-3.5.2.exe` (~79 MB). Instalador comum: escolhe pasta, cria atalho,
+Gera `dist/DiSlackso-Setup-3.5.3.exe` (~79 MB). Instalador comum: escolhe pasta, cria atalho,
 desinstala pelo Painel de Controle.
 
 > **Sobre o erro "Cannot create symbolic link"**
@@ -82,7 +82,7 @@ npm install
 npm run icon && electron-builder --linux --publish never
 ```
 
-Gera `dist/DiSlackso-3.5.2.AppImage` e `dist/DiSlackso-3.5.2.rpm`. O `.rpm` instala nativo
+Gera `dist/DiSlackso-3.5.3.AppImage` e `dist/DiSlackso-3.5.3.rpm`. O `.rpm` instala nativo
 via `dnf`; o `.AppImage` roda sem instalar (`chmod +x` e executa — se faltar o FUSE2,
 `sudo dnf install fuse fuse-libs`). O `npm run build` normal não serve aqui porque o
 `scripts/prep-build.js` que ele chama é só para o cache do Windows (ele detecta a plataforma

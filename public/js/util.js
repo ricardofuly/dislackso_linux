@@ -76,18 +76,19 @@ function feedback(kind = 'message') {
     const profile = {
       join: [660, 880], leave: [420, 280], screenstart: [520, 780],
       screenstop: [780, 440], message: [720], announce: [560, 780, 990],
+      mute: [520, 340], unmute: [520, 700],
     }[kind] || [620];
     profile.forEach((freq, i) => {
       const osc = feedbackCtx.createOscillator();
       const gain = feedbackCtx.createGain();
-      const start = feedbackCtx.currentTime + i * 0.075;
+      const start = feedbackCtx.currentTime + i * 0.08;
       osc.frequency.value = freq;
       osc.type = 'sine';
       gain.gain.setValueAtTime(0.0001, start);
-      gain.gain.exponentialRampToValueAtTime(0.045, start + 0.012);
-      gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.10);
+      gain.gain.exponentialRampToValueAtTime(0.16, start + 0.015);
+      gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.16);
       osc.connect(gain).connect(feedbackCtx.destination);
-      osc.start(start); osc.stop(start + 0.11);
+      osc.start(start); osc.stop(start + 0.17);
     });
   } catch { /* feedback visual continua disponível */ }
 }
