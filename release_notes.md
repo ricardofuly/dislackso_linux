@@ -1,3 +1,10 @@
+### Versão 3.3.5
+
+* **Correção crítica:** o botão "Reiniciar e instalar" da tela de atualização não fazia
+  nada ao clicar. Causa: a caixa de confirmação ("Reiniciar agora?") abria por trás da
+  própria tela de atualização — um problema de camadas (z-index) que já existia antes
+  desta versão. Modais de confirmação agora sempre abrem por cima de qualquer tela.
+
 ### Versão 3.3.4
 
 * **Correção:** os botões de minimizar/maximizar/fechar da janela (Windows) ficavam por

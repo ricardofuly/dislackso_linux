@@ -634,8 +634,11 @@ input[type=color]::-webkit-color-swatch { border: 0; border-radius: 50%; }
 .ctl-danger:hover { background: var(--red-hi); color: #fff; }
 
 /* ============================================================ modais ==== */
+/* Sempre o mais alto: um modal pode ser aberto de dentro do gate, das
+   configurações ou da tela de atualização (ex.: "Reiniciar agora?"), e
+   precisa renderizar por cima delas, não atrás. */
 .modal {
-  position: fixed; inset: 0; z-index: 70;
+  position: fixed; inset: 0; z-index: 100;
   display: grid; place-items: center;
   background: rgba(0, 0, 0, .72); padding: 20px;
 }
