@@ -6,12 +6,14 @@ import { TooltipProvider } from '@/components/ui/Tooltip';
 import { Gate } from '@/components/gate/Gate';
 import { Shell } from '@/components/layout/Shell';
 import { AnnouncementDialog } from '@/components/overlays/AnnouncementDialog';
+import { ScreenPickerDialog } from '@/components/overlays/ScreenPickerDialog';
 import { InviteCatcher } from '@/components/overlays/InviteCatcher';
 import { useSession } from '@/stores/session';
 import { startConnection } from './connection';
 import { useAutoUpdateCheck } from '@/hooks/useUpdater';
 import { useEngineBridge } from './useEngineBridge';
 import { useDesktopServerOverride } from './useDesktopServerOverride';
+import { useScreenPickerBridge } from './useScreenPickerBridge';
 
 /**
  * A raiz do app.
@@ -26,6 +28,7 @@ export function App() {
 
   useEngineBridge();
   useAutoUpdateCheck();
+  useScreenPickerBridge();
 
   useEffect(() => {
     if (ready) startConnection();
@@ -70,6 +73,7 @@ export function App() {
       )}
 
       <AnnouncementDialog />
+      <ScreenPickerDialog />
       <InviteCatcher />
       <Toaster />
     </TooltipProvider>

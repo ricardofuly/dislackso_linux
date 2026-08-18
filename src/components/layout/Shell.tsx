@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { storage, KEYS } from '@/lib/storage';
 import { isDesktop } from '@/lib/platform';
@@ -38,7 +38,11 @@ export function Shell() {
   const inRoom = Boolean(useRoom((s) => s.room));
 
   useConnectionRefresh(inRoom);
-  useKeyboardShortcuts({ onOpenSettings: () => setSettingsSection('conta') });
+  // Estável de propósito: um objeto novo a cada render faria o efeito de
+  // useKeyboardShortcuts (que depende dele) desligar e religar os atalhos
+  // de teclado sempre que o Shell renderizar de novo.
+  const openAccountSettings = useCallback(() => setSettingsSection('conta'), []);
+  useKeyboardShortcuts({ onOpenSettings: openAccountSettings });
 
   const toggleMembers = () => {
     setMembers((open) => {

@@ -26,6 +26,7 @@ const { createStore } = require('./db/store');
 const { makePublicGuild, makePublicUser } = require('./db/shapes');
 const { buildIceServers } = require('./ice');
 const { registerRoutes } = require('./http/routes');
+const { corsMiddleware } = require('./http/cors');
 const { createPresence } = require('./socket/presence');
 const { attachSocket } = require('./socket');
 
@@ -56,6 +57,7 @@ function createServer(options = {}) {
   /* --------------------------------------------------------------- http -- */
 
   const app = express();
+  app.use('/api', corsMiddleware);
   app.use(express.json({ limit: '20mb' }));
   app.use('/uploads', express.static(uploadDir, { maxAge: '7d', immutable: true }));
 
