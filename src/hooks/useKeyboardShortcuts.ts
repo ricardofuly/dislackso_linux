@@ -4,6 +4,7 @@ import { voice } from '@/lib/rtc/engine';
 import { useRoom } from '@/stores/room';
 import { settings } from '@/stores/settings';
 import { toggleScreen } from '@/features/voice/actions';
+import { shortcutMatches } from '@/lib/format';
 
 interface Options {
   onOpenSettings(): void;
@@ -18,19 +19,21 @@ function isTyping(target: EventTarget | null): boolean {
 }
 
 /**
- * Os atalhos globais: M (microfone), S (tela), P (caneta), Esc (voltar).
- *
- * O apertar-para-falar é o caso delicado: `keydown` repete enquanto a tecla
- * fica pressionada, e sem barrar `e.repeat` o microfone abriria e fecharia
- * dezenas de vezes por segundo.
+ * Os atalhos globais configuráveis:
+ * - Mutar/Desmutar microfone (muteKey, padrão KeyM)
+ * - Iniciar/Parar transmissão de tela (screenKey, padrão KeyS)
+ * - Apertar para falar (pttKey, padrão Space)
+ * - Ativar/Desativar anotações (annotKey, padrão KeyP)
+ * - Abrir configurações (Ctrl+, / Cmd+,)
+ * - Voltar / Cancelar (Escape)
  */
 export function useKeyboardShortcuts({ onOpenSettings }: Options): void {
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
-      const pttKey = settings().pttKey;
+      const s = settings();
 
       if (e.repeat) {
-        if (!isTyping(e.target) && e.code === pttKey) e.preventDefault();
+        if (!isTyping(e.target) && shortcutMatches(e, s.pttKey)) e.preventDefault();
         return;
       }
       if (isTyping(e.target)) return;
@@ -43,7 +46,13 @@ export function useKeyboardShortcuts({ onOpenSettings }: Options): void {
         return;
       }
 
-      if (inRoom && settings().micMode === 'ptt' && e.code === pttKey) {
+      if ((e.key === ',' || e.code === 'Comma') && (e.ctrlKey || e.metaKey)) {
+        e.preventDefault();
+        onOpenSettings();
+        return;
+      }
+
+      if (inRoom && s.micMode === 'ptt' && shortcutMatches(e, s.pttKey)) {
         e.preventDefault();
         voice.mic.setPtt(true);
         return;
@@ -51,19 +60,30 @@ export function useKeyboardShortcuts({ onOpenSettings }: Options): void {
 
       if (!inRoom) return;
 
-      const key = e.key.toLowerCase();
-      if (key === 'm') voice.toggleMic();
-      if (key === 's') toggleScreen();
-      if (key === 'p') {
-        // Sem destaque, rabisca na tela que estiver disponível para isso.
+      if (shortcutMatches(e, s.muteKey)) {
+        e.preventDefault();
+        voice.toggleMic();
+        return;
+      }
+
+      if (shortcutMatches(e, s.screenKey)) {
+        e.preventDefault();
+        toggleScreen();
+        return;
+      }
+
+      if (shortcutMatches(e, s.annotKey)) {
+        e.preventDefault();
         const target = useRoom.getState().focusId;
         if (target) annot.setActive(annot.isActive(target) ? null : target);
+        return;
       }
-      if (key === ',' && (e.ctrlKey || e.metaKey)) onOpenSettings();
     };
 
     const up = (e: KeyboardEvent) => {
-      if (e.code === settings().pttKey) voice.mic.setPtt(false);
+      if (shortcutMatches(e, settings().pttKey)) {
+        voice.mic.setPtt(false);
+      }
     };
 
     // Perder o foco com a tecla apertada tem de fechar o microfone — senão

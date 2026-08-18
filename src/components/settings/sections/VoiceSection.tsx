@@ -5,7 +5,7 @@ import { SettingNote, SettingRow, Select } from '../SettingRow';
 import { MicTest } from '../MicTest';
 import { useAudioDevices } from '../useAudioDevices';
 import { voice } from '@/lib/rtc/engine';
-import { keyLabel } from '@/lib/format';
+import { formatShortcut, captureShortcut } from '@/lib/format';
 import { useSettings } from '@/stores/settings';
 import { toast } from '@/stores/toasts';
 
@@ -141,7 +141,16 @@ function PttKeyRow() {
     setListening(true);
     const grab = (e: KeyboardEvent) => {
       e.preventDefault();
-      set('pttKey', e.code);
+      e.stopPropagation();
+      if (e.key === 'Escape') {
+        setListening(false);
+        window.removeEventListener('keydown', grab, true);
+        return;
+      }
+      const captured = captureShortcut(e);
+      if (!captured) return;
+
+      set('pttKey', captured);
       setListening(false);
       window.removeEventListener('keydown', grab, true);
     };
@@ -150,7 +159,13 @@ function PttKeyRow() {
 
   return (
     <SettingRow title="Tecla de falar" desc="Clique e aperte a tecla desejada.">
-      <Button onClick={capture}>{listening ? 'Pressione uma tecla…' : keyLabel(pttKey)}</Button>
+      <Button
+        variant={listening ? 'primary' : 'soft'}
+        className={listening ? 'animate-pulse' : ''}
+        onClick={capture}
+      >
+        {listening ? 'Pressione uma tecla…' : formatShortcut(pttKey)}
+      </Button>
     </SettingRow>
   );
 }

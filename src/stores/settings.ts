@@ -39,8 +39,12 @@ export interface SettingsValues {
   noiseSuppression: boolean;
   autoGainControl: boolean;
   micMode: 'voz' | 'ptt';
-  pttKey: string;
   duckVoiceOnShare: boolean;
+  // atalhos
+  muteKey: string;
+  screenKey: string;
+  pttKey: string;
+  annotKey: string;
   // aplicativo
   autoUpdate: boolean;
   feedbackSounds: boolean;
@@ -57,7 +61,8 @@ export const DEFAULT_SETTINGS: SettingsValues = {
   quality: '1080p60', contentHint: 'motion', autoFocus: true, selfPreview: true, shareSystemAudio: true,
   micId: '', speakerId: '', micGain: 1,
   echoCancellation: true, noiseSuppression: true, autoGainControl: true,
-  micMode: 'voz', pttKey: 'Space', duckVoiceOnShare: true,
+  micMode: 'voz', duckVoiceOnShare: true,
+  muteKey: 'KeyM', screenKey: 'KeyS', pttKey: 'Space', annotKey: 'KeyP',
   autoUpdate: true, feedbackSounds: true,
   annotAllow: true, annotFade: 8, annotColor: '#ff3b5c', annotSize: 4,
 };

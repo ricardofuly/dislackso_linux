@@ -23,11 +23,65 @@ export function bytes(n: number): string {
 export function keyLabel(code: string): string {
   if (!code) return '—';
   if (code === 'Space') return 'Espaço';
+  if (code === 'Escape') return 'Esc';
+  if (code === 'Backspace') return 'Backspace';
+  if (code === 'Enter') return 'Enter';
+  if (code === 'Tab') return 'Tab';
+  if (code === 'Delete') return 'Del';
+  if (code === 'Insert') return 'Ins';
+  if (code === 'Home') return 'Home';
+  if (code === 'End') return 'End';
+  if (code === 'PageUp') return 'PgUp';
+  if (code === 'PageDown') return 'PgDn';
   if (code.startsWith('Key')) return code.slice(3);
   if (code.startsWith('Digit')) return code.slice(5);
   if (code.startsWith('Numpad')) return `Num ${code.slice(6)}`;
   if (code.startsWith('Arrow')) return `Seta ${code.slice(5).toLowerCase()}`;
   return code.replace(/(Left|Right)$/, ' $1').replace('Control', 'Ctrl');
+}
+
+/** Formata uma combinação de teclas serializada (ex.: "Ctrl+Alt+KeyM" ou "KeyS") para exibição amigável. */
+export function formatShortcut(bind: string): string {
+  if (!bind) return '—';
+  const parts = bind.split('+');
+  const code = parts[parts.length - 1] ?? '';
+  const modifiers = parts.slice(0, -1);
+  return [...modifiers, keyLabel(code)].join(' + ');
+}
+
+const MODIFIER_KEYS = new Set(['Control', 'Shift', 'Alt', 'Meta']);
+
+/** Captura a combinação de teclas de um evento de teclado para rebind. Retorna null se for apenas modificador solto. */
+export function captureShortcut(e: KeyboardEvent): string | null {
+  if (MODIFIER_KEYS.has(e.key)) return null;
+
+  const parts: string[] = [];
+  if (e.ctrlKey) parts.push('Ctrl');
+  if (e.altKey) parts.push('Alt');
+  if (e.shiftKey) parts.push('Shift');
+  if (e.metaKey) parts.push('Meta');
+  parts.push(e.code);
+
+  return parts.join('+');
+}
+
+/** Verifica se um KeyboardEvent corresponde a um atalho configurado. */
+export function shortcutMatches(e: KeyboardEvent, bind: string): boolean {
+  if (!bind) return false;
+  const parts = bind.split('+');
+  const code = parts[parts.length - 1] ?? '';
+  const hasCtrl = parts.includes('Ctrl');
+  const hasAlt = parts.includes('Alt');
+  const hasShift = parts.includes('Shift');
+  const hasMeta = parts.includes('Meta');
+
+  return (
+    e.code === code &&
+    e.ctrlKey === hasCtrl &&
+    e.altKey === hasAlt &&
+    e.shiftKey === hasShift &&
+    e.metaKey === hasMeta
+  );
 }
 
 const RGB_FALLBACK = { r: 88, g: 101, b: 242 };

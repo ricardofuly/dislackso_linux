@@ -1,6 +1,6 @@
 import { motion } from 'motion/react';
 import {
-  Headphones, Image, Info, Monitor, MonitorUp, Palette, Pen, RefreshCw, Sparkles, User, X,
+  Headphones, Image, Info, Keyboard, Monitor, MonitorUp, Palette, Pen, RefreshCw, Sparkles, User, X,
 } from 'lucide-react';
 import { Dialog } from 'radix-ui';
 import { IconButton } from '@/components/ui/Button';
@@ -11,6 +11,7 @@ import { ProfileSection } from './sections/ProfileSection';
 import { VoiceSection } from './sections/VoiceSection';
 import { BroadcastSection } from './sections/BroadcastSection';
 import { AnnotationsSection } from './sections/AnnotationsSection';
+import { KeybindsSection } from './sections/KeybindsSection';
 import { ThemeSection } from './sections/ThemeSection';
 import { MotionSection } from './sections/MotionSection';
 import { AppSection } from './sections/AppSection';
@@ -38,6 +39,7 @@ const GROUPS: { label: string; items: SectionDef[] }[] = [
     items: [
       { id: 'voz', label: 'Voz e vídeo', icon: Headphones, render: () => <VoiceSection /> },
       { id: 'transmissao', label: 'Transmissão', icon: MonitorUp, render: () => <BroadcastSection /> },
+      { id: 'atalhos', label: 'Atalhos de teclado', icon: Keyboard, render: () => <KeybindsSection /> },
       { id: 'anotacoes', label: 'Anotações', icon: Pen, render: () => <AnnotationsSection /> },
     ],
   },
