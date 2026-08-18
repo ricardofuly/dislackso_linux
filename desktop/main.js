@@ -13,7 +13,7 @@
  *   - controle de aceleracao de hardware e transparencia da janela.
  */
 
-const { app, BrowserWindow, ipcMain, session, desktopCapturer, shell, Menu, dialog } = require('electron');
+const { app, BrowserWindow, ipcMain, session, desktopCapturer, shell, Menu, Tray, dialog, nativeImage } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
@@ -58,6 +58,7 @@ const DEFAULTS = {
   serverUrlOverride: '',       // definido pelo painel de desenvolvedor
   adminKey: '',                 // pra mandar avisos — precisa bater com ADMIN_KEY no Render
   storageMigrated: false,       // sessão e preferências já vieram da origem file://
+  closeToTray: true,           // fechar a janela minimiza para a bandeja em vez de encerrar
 };
 
 /* ------------------------------------------------------------ config --- */
@@ -94,14 +95,22 @@ if (!config.hardwareAcceleration) app.disableHardwareAcceleration();
 let win = null;
 let devWin = null;
 let devWinAuthed = false;
+let tray = null;
+/** `true` só durante uma saída de verdade (menu da bandeja, atualização, Cmd+Q no mac). */
+let isQuitting = false;
 
 if (!app.requestSingleInstanceLock()) {
   app.quit();
 } else {
   app.on('second-instance', () => {
-    if (win) { if (win.isMinimized()) win.restore(); win.focus(); }
+    if (!win) return;
+    if (win.isMinimized()) win.restore();
+    if (!win.isVisible()) win.show();
+    win.focus();
   });
 }
+
+app.on('before-quit', () => { isQuitting = true; });
 
 /* ------------------------------------------------------------- janela -- */
 
@@ -127,6 +136,15 @@ function createWindow() {
 
   win.show();
   win.on('closed', () => { win = null; });
+
+  // Fechar a janela (o X) minimiza para a bandeja em vez de encerrar — assim
+  // uma chamada de voz em andamento não cai só porque a janela sumiu. Vem
+  // desligado por uma configuração, ver AppSection na interface.
+  win.on('close', (event) => {
+    if (isQuitting || !readConfig().closeToTray) return;
+    event.preventDefault();
+    win.hide();
+  });
 
   // Uma vez só, no primeiro boot da 4.0: traz sessão e preferências da origem
   // antiga. Ver desktop/migrate-storage.js.
@@ -154,6 +172,25 @@ function createWindow() {
   });
 
   goHome();
+}
+
+/* -------------------------------------------------------- bandeja ----- */
+
+/** O ícone da bandeja, criado uma vez só e reaproveitado a janela inteira vida do app. */
+function createTray() {
+  if (tray) return;
+  const iconPath = path.join(__dirname, '..', 'build', process.platform === 'win32' ? 'icon.ico' : 'icon.png');
+  let icon = nativeImage.createFromPath(iconPath);
+  if (process.platform !== 'win32' && !icon.isEmpty()) icon = icon.resize({ width: 16, height: 16 });
+
+  tray = new Tray(icon);
+  tray.setToolTip('DiSlackso');
+  tray.setContextMenu(Menu.buildFromTemplate([
+    { label: 'Abrir DiSlackso', click: () => { if (win) { win.show(); win.focus(); } } },
+    { type: 'separator' },
+    { label: 'Sair', click: () => { isQuitting = true; app.quit(); } },
+  ]));
+  tray.on('click', () => { if (win) { win.isVisible() ? win.focus() : win.show(); } });
 }
 
 /**
@@ -518,6 +555,7 @@ app.whenReady().then(() => {
   });
 
   createWindow();
+  createTray();
 
   app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createWindow(); });
 });

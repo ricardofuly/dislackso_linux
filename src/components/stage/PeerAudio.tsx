@@ -54,7 +54,7 @@ export function PeerAudio() {
         node.play().catch(() => {});
       }
 
-      node.volume = localMutes.has(peer.sid)
+      node.volume = voice.deafened || localMutes.has(peer.sid)
         ? 0
         : clamp((localVolumes.get(peer.sid) ?? 1) * duck, 0, 1);
 

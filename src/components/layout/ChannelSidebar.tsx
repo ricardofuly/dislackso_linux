@@ -12,6 +12,7 @@ import { joinVoice } from '@/features/voice/actions';
 import { cn } from '@/lib/cn';
 import { GuildMenu } from './GuildMenu';
 import { VoiceChannelRow } from './VoiceChannelRow';
+import { CallBar } from './CallBar';
 
 interface ChannelSidebarProps {
   onOpenSettings(section: string): void;
@@ -102,27 +103,31 @@ function UserCard({ onOpenSettings }: { onOpenSettings(section: string): void })
   const status = !connected ? 'Reconectando…' : inRoom ? 'Em uma sala' : 'Disponível';
 
   return (
-    <footer className="flex items-center gap-2 border-t border-line p-2">
-      <button
-        type="button"
-        onClick={() => onOpenSettings('conta')}
-        className="flex min-w-0 flex-1 items-center gap-2 rounded-[var(--radius-sm)] p-1
-                   text-left transition-colors hover:bg-hover"
-      >
-        <Avatar user={me} size="sm" />
-        <span className="min-w-0 flex-1">
-          <span className="block truncate text-[13px] font-medium text-bright">{me?.name}</span>
-          <span className={cn('block truncate text-[11px]', connected ? 'text-dim' : 'text-yellow')}>
-            {status}
-          </span>
-        </span>
-      </button>
+    <footer className="border-t border-line">
+      {inRoom && <CallBar onOpenSettings={onOpenSettings} />}
 
-      <Tip label="Configurações">
-        <IconButton label="Configurações" onClick={() => onOpenSettings('aparencia')}>
-          <Settings size={18} />
-        </IconButton>
-      </Tip>
+      <div className="flex items-center gap-2 p-2">
+        <button
+          type="button"
+          onClick={() => onOpenSettings('conta')}
+          className="flex min-w-0 flex-1 items-center gap-2 rounded-[var(--radius-sm)] p-1
+                     text-left transition-colors hover:bg-hover"
+        >
+          <Avatar user={me} size="sm" />
+          <span className="min-w-0 flex-1">
+            <span className="block truncate text-[13px] font-medium text-bright">{me?.name}</span>
+            <span className={cn('block truncate text-[11px]', connected ? 'text-dim' : 'text-yellow')}>
+              {status}
+            </span>
+          </span>
+        </button>
+
+        <Tip label="Configurações">
+          <IconButton label="Configurações" onClick={() => onOpenSettings('aparencia')}>
+            <Settings size={18} />
+          </IconButton>
+        </Tip>
+      </div>
     </footer>
   );
 }

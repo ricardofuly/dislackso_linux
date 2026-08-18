@@ -7,14 +7,12 @@ import { useGuilds } from '@/stores/guilds';
 import { useRoom } from '@/stores/room';
 import { useSession } from '@/stores/session';
 import { voice } from '@/lib/rtc/engine';
-import { Controls } from './Controls';
 import { ShareHud } from './ShareHud';
 import { VoiceStage } from './VoiceStage';
 
 interface StageProps {
   membersOpen: boolean;
   onToggleMembers(): void;
-  onOpenSettings(section: string): void;
 }
 
 /**
@@ -24,7 +22,7 @@ interface StageProps {
  * estado vazio. Um canal de texto aberto tem precedência sobre a sala — sem
  * sair dela: o áudio continua, e clicar na sala de novo volta para o vídeo.
  */
-export function Stage({ membersOpen, onToggleMembers, onOpenSettings }: StageProps) {
+export function Stage({ membersOpen, onToggleMembers }: StageProps) {
   const guilds = useGuilds((s) => s.guilds);
   const activeGuildId = useGuilds((s) => s.activeGuildId);
   const activeTextChannelId = useGuilds((s) => s.activeTextChannelId);
@@ -63,7 +61,6 @@ export function Stage({ membersOpen, onToggleMembers, onOpenSettings }: StagePro
           <>
             <ShareHud />
             <VoiceStage />
-            <Controls onOpenSettings={onOpenSettings} />
           </>
         ) : (
           <EmptyStage hasGuild={Boolean(guild)} />

@@ -1,3 +1,43 @@
+### Versão 4.0.2
+
+Correções de interface da 4.0/4.0.1 e alguns pedidos recorrentes na chamada de voz.
+
+**Chamada de voz**
+
+* **Controles só em ícone, junto do seu cartão de conta.** A barra de mudo/tela/qualidade/
+  sair deixou de flutuar por cima do palco e agora mora ao lado do seu nome, no rodapé da
+  coluna de canais — como no Discord. Consequência boa: ela continua acessível mesmo com um
+  canal de texto aberto por cima da sala, o que antes escondia os controles.
+* **Ensurdecer (mudo completo).** Novo botão ao lado do microfone que para de ouvir todo
+  mundo e muta o próprio microfone junto — pra quando você precisa sumir da conversa sem sair
+  da sala. Reativar o microfone enquanto ensurdecido sai do modo sozinho, senão dava pra falar
+  sem nunca ouvir a resposta.
+* **Ícone de mudo/transmitindo também na lista de membros.** Antes só aparecia na lista de
+  ocupantes da sala de voz; agora quem está numa chamada mostra o mesmo indicador na lista de
+  membros do servidor, e o botão direito nela ganhou mutar-só-pra-mim/volume pra quem também
+  estiver na sua sala.
+* **Anti-retorno da call ao compartilhar áudio do sistema** (#13, por Ricardo Fuly): a opção
+  de abaixar a voz da chamada enquanto você transmite com áudio agora tem níveis (silenciar,
+  10%, 25%, 50% ou não alterar) em vez de só ligado/desligado — ajustável em
+  *Configurações › Transmissão*.
+
+**Interface**
+
+* **Avisos foram para o topo da tela.** "Fulano entrou na sala", "começou a transmitir" etc.
+  apareciam no rodapé, embaixo da barra de digitação e dos controles da chamada — de olho
+  claramente errado. Agora aparecem no topo.
+* **Painel de desenvolvedor legível de novo.** A tela de senha (`Ctrl+Alt+Shift+D`) carregava
+  um CSS que não existe mais desde a reescrita da 4.0 e caía no estilo cru do navegador —
+  texto quase invisível sobre fundo escuro. Painel reescrito com estilo próprio.
+* **Botão de fechar das Configurações não fica mais em cima dos botões da janela** (minimizar/
+  maximizar/fechar do Windows) no app desktop.
+* **Fechar a janela não derruba mais a chamada.** O X da janela agora minimiza o app para a
+  bandeja do sistema em vez de encerrar — a chamada de voz continua. Dá pra desligar esse
+  comportamento em *Configurações › Aplicativo*, se preferir que o X feche o app de verdade.
+* **Avisos duplicados em desenvolvimento:** o app registrava os eventos do servidor duas vezes
+  ao carregar em modo de desenvolvimento (mensagem, entrada na sala, avisos — tudo em dobro).
+  Não afetava o app instalado, mas atrapalhava testar; corrigido.
+
 ### Versão 4.0.1
 
 Correções e melhorias pós-lançamento da Aurora 4.0.
