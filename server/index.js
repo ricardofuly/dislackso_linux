@@ -291,6 +291,10 @@ function createServer(options = {}) {
     });
   }
 
+  // Chave compartilhada com o painel de desenvolvedor do app desktop, pra
+  // ele conseguir mandar avisos pra todo mundo sem precisar de uma conta.
+  const adminKey = String(options.adminKey || process.env.ADMIN_KEY || '');
+
   /* ------------------------------------------------------------- http --- */
 
   const app = express();
@@ -311,6 +315,28 @@ function createServer(options = {}) {
       supabaseError: lastSupabaseError,
       supabaseLastOkAt: lastSupabaseOkAt,
     });
+  });
+
+  /**
+   * Aviso pra todo mundo conectado agora, disparado pelo painel de
+   * desenvolvedor do app desktop. Protegido por uma chave compartilhada
+   * (ADMIN_KEY), não por login — o painel de dev não tem sessão de usuário.
+   */
+  app.post('/api/admin/broadcast', (req, res) => {
+    try {
+      if (!adminKey) return res.status(503).json({ error: 'ADMIN_KEY não configurado no servidor' });
+      const { key, message, forceFocus } = req.body || {};
+      if (String(key || '') !== adminKey) return res.status(403).json({ error: 'chave inválida' });
+      const text = cleanMultiline(message, 2000);
+      if (!text) return res.status(400).json({ error: 'mensagem vazia' });
+
+      const payload = { id: uid(), message: text, forceFocus: !!forceFocus, at: Date.now() };
+      io.emit('admin:message', payload);
+      res.json({ ok: true, delivered: io.engine.clientsCount });
+    } catch (err) {
+      console.error('[admin:broadcast]', err);
+      res.status(500).json({ error: 'falha ao enviar' });
+    }
   });
 
   /**
@@ -758,6 +784,19 @@ function createServer(options = {}) {
       io.to(guildRoom(guildId)).emit('message:new', { guildId, channelId, message: { ...message, user: publicUser(s.userId) } });
       cb({ message: { ...message, user: publicUser(s.userId) } });
     }));
+
+    /* --------------------------------------------- prévia de tela --- */
+
+    // Imagem estática e pequena (quem está transmitindo manda de vez em
+    // quando) pra quem ainda não pediu o vídeo de verdade. Limita o
+    // tamanho por segurança — maxHttpBufferSize do socket.io já barra
+    // coisa muito grande, isso aqui é só uma segunda trava.
+    socket.on('screen:preview', (payload = {}) => {
+      const s = sessions.get(socket.id);
+      if (!s || !s.room) return;
+      const dataUrl = payload.dataUrl ? String(payload.dataUrl).slice(0, 200000) : null;
+      socket.to(s.room).emit('screen:preview', { from: socket.id, dataUrl });
+    });
 
     /* --------------------------------------------------- anotacoes --- */
 

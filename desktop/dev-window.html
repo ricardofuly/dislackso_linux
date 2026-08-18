@@ -87,6 +87,32 @@
   </section>
 
   <section class="dev-section">
+    <h2>Comunicados</h2>
+    <div class="set-row stack">
+      <div class="info"><b>Chave de admin</b><span>Precisa bater com a variável ADMIN_KEY configurada no Render. Fica salva só nesta máquina.</span></div>
+      <div class="ctrl">
+        <input id="admin-key" type="password" placeholder="Chave de admin" autocomplete="off">
+        <button id="btn-save-admin-key" class="btn btn-ghost">Salvar</button>
+      </div>
+    </div>
+    <div class="set-row stack" style="margin-top:14px">
+      <div class="info"><b>Mandar aviso pra todo mundo</b><span>Abre um popup com som pra quem estiver com o app aberto agora, em qualquer dispositivo.</span></div>
+      <div class="ctrl" style="width:100%">
+        <textarea id="admin-message" rows="3" placeholder="Ex: o servidor vai reiniciar em 5 minutos pra manutenção" style="width:100%;resize:vertical"></textarea>
+      </div>
+    </div>
+    <div class="set-row">
+      <div class="info"><b>Forçar a janela deles pra frente</b><span>Só faz sentido pra avisos urgentes — traz o DiSlackso pra tela de quem estiver com o app aberto.</span></div>
+      <div class="ctrl"><label class="switch"><input type="checkbox" id="admin-force-focus" checked><span class="track"></span><span class="knob"></span></label></div>
+    </div>
+    <div class="set-row">
+      <div class="info"></div>
+      <div class="ctrl"><button id="btn-send-broadcast" class="btn btn-primary">Enviar para todos</button></div>
+    </div>
+    <p id="broadcast-msg" class="dev-note"></p>
+  </section>
+
+  <section class="dev-section">
     <h2>Dados locais</h2>
     <div class="set-row">
       <div class="info"><b>Limpar tudo</b><span>Apaga sessão, cache de perfil/servidores e preferências salvas neste app.</span></div>

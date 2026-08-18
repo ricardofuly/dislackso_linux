@@ -16,6 +16,7 @@ contextBridge.exposeInMainWorld('desktopDev', {
   appInfo: () => ipcRenderer.invoke('dev:appInfo'),
   openDataFolder: () => ipcRenderer.invoke('dev:openDataFolder'),
   clearLocalData: () => ipcRenderer.invoke('dev:clearLocalData'),
+  broadcast: (message, forceFocus) => ipcRenderer.invoke('dev:broadcast', { message, forceFocus }),
 
   update: {
     state: () => ipcRenderer.invoke('update:state'),

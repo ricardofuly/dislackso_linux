@@ -75,7 +75,7 @@ function feedback(kind = 'message') {
     if (feedbackCtx.state === 'suspended') feedbackCtx.resume().catch(() => {});
     const profile = {
       join: [660, 880], leave: [420, 280], screenstart: [520, 780],
-      screenstop: [780, 440], message: [720],
+      screenstop: [780, 440], message: [720], announce: [560, 780, 990],
     }[kind] || [620];
     profile.forEach((freq, i) => {
       const osc = feedbackCtx.createOscillator();

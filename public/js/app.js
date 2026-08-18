@@ -22,6 +22,8 @@ const S = {
   localMutes: new Set(),    // sid -> mutado só pra mim
   localVolumes: new Map(),  // sid -> 0..1, só pra mim
   friends: new Set(),       // userId de quem eu marquei como amigo
+  watching: new Set(),      // sid de quem eu pedi pra assistir a tela
+  previews: new Map(),      // sid -> data URL da última prévia recebida
 };
 
 const tiles = new Map();     // id -> { el, video, streamId, annotActive }
@@ -268,6 +270,16 @@ function connect() {
   socket.on('voice:state', ({ sid, state }) => {
     Voice.setPeerState(sid, state);
     maybeAutoFocus(sid, state);
+    // Se a pessoa parou de compartilhar, esquece que eu tava assistindo —
+    // senão, quando ela compartilhar de novo, o app acha que já devia
+    // estar recebendo o vídeo (e nunca manda o pedido de novo).
+    if (!state.screen) { S.watching.delete(sid); S.previews.delete(sid); }
+  });
+
+  socket.on('screen:preview', ({ from, dataUrl }) => {
+    if (dataUrl) S.previews.set(from, dataUrl);
+    else S.previews.delete(from);
+    if (!S.watching.has(from)) renderStageContent();
   });
 
   socket.on('message:new', ({ guildId, channelId, message }) => {
@@ -279,6 +291,41 @@ function connect() {
   });
 
   socket.on('rtc:signal', ({ from, data }) => Voice.handleSignal(from, data));
+
+  socket.on('admin:message', (payload) => showAnnouncement(payload));
+}
+
+/* ========================================================= avisos admin = */
+
+const announceQueue = [];
+let announceShowing = false;
+
+/** Aviso do painel de dev, ou (no futuro) de atualização — sempre um por vez. */
+function showAnnouncement(payload) {
+  if (!payload || announceQueue.some((p) => p.id === payload.id)) return;
+  announceQueue.push(payload);
+  if (!announceShowing) drainAnnounceQueue();
+}
+
+function drainAnnounceQueue() {
+  const next = announceQueue.shift();
+  if (!next) { announceShowing = false; return; }
+  announceShowing = true;
+
+  $('#announce-text').textContent = next.message;
+  $('#announce').classList.remove('hidden');
+  feedback('announce');
+
+  if (next.forceFocus && isDesktop() && window.desktop.focusWindow) {
+    window.desktop.focusWindow();
+  }
+
+  const close = () => {
+    $('#announce').classList.add('hidden');
+    $('#announce-ok').onclick = null;
+    drainAnnounceQueue();
+  };
+  $('#announce-ok').onclick = close;
 }
 
 /** Coloca em destaque quem acabou de começar a transmitir. */
@@ -440,22 +487,49 @@ function showUserMenu(e, user) {
   if (r.bottom > window.innerHeight) menu.style.top = `${Math.max(8, window.innerHeight - r.height - 8)}px`;
 }
 
+/**
+ * Atualiza os nós existentes em vez de recriar tudo (innerHTML = '') a cada
+ * chamada. renderRail() roda a cada presence:update — que o servidor manda
+ * toda vez que ALGUÉM muda de estado de voz, inclusive só de "falando" —
+ * então acontece várias vezes por minuto numa conversa normal. Recriar o
+ * <img> do ícone toda hora fazia ele piscar (o navegador recarrega a
+ * imagem do zero a cada innerHTML novo).
+ */
 function renderRail() {
   const list = $('#rail-list');
-  list.innerHTML = '';
+  const seen = new Set();
+
   for (const g of S.guilds) {
-    const btn = el('button', 'rail-btn' + (g.id === S.activeGuildId ? ' active' : ''));
+    seen.add(g.id);
+    let btn = list.querySelector(`[data-guild-id="${g.id}"]`);
+    if (!btn) {
+      btn = el('button', 'rail-btn');
+      btn.dataset.guildId = g.id;
+      btn.onclick = () => { S.activeGuildId = g.id; S.activeTextChannelId = null; renderAll(); };
+      list.appendChild(btn);
+    }
+    btn.classList.toggle('active', g.id === S.activeGuildId);
     btn.title = g.name;
-    if (g.icon) btn.innerHTML = `<img src="${assetUrl(esc(g.icon))}" alt="">`;
-    else btn.textContent = initials(g.name);
+
+    const wantIcon = g.icon ? assetUrl(g.icon) : '';
+    if (btn.dataset.icon !== wantIcon) {
+      btn.dataset.icon = wantIcon;
+      if (wantIcon) btn.innerHTML = `<img src="${esc(wantIcon)}" alt="">`;
+      else btn.textContent = initials(g.name);
+    }
 
     const live = countLive(g.id);
+    let dot = btn.querySelector('.dot');
     if (live) {
-      const dot = el('span', 'dot', String(live));
-      btn.appendChild(dot);
+      if (!dot) { dot = el('span', 'dot'); btn.appendChild(dot); }
+      if (dot.textContent !== String(live)) dot.textContent = String(live);
+    } else if (dot) {
+      dot.remove();
     }
-    btn.onclick = () => { S.activeGuildId = g.id; S.activeTextChannelId = null; renderAll(); };
-    list.appendChild(btn);
+  }
+
+  for (const btn of [...list.children]) {
+    if (!seen.has(btn.dataset.guildId)) btn.remove();
   }
 }
 
@@ -469,12 +543,12 @@ function renderChannels() {
   $('#guild-name').textContent = guild ? guild.name : 'Selecione um servidor';
   const list = $('#channel-list');
   const textList = $('#text-channel-list');
-  list.innerHTML = '';
-  textList.innerHTML = '';
-  if (!guild) return;
+  if (!guild) { list.innerHTML = ''; textList.innerHTML = ''; return; }
 
   const presence = S.presence[guild.id] || {};
 
+  // Canais de texto: sem imagem, sem custo recriar toda vez.
+  textList.innerHTML = '';
   for (const ch of guild.channels.filter((channel) => channel.type === 'text')) {
     const active = S.activeTextChannelId === ch.id;
     const btn = el('button', 'channel text-channel' + (active ? ' active' : ''));
@@ -483,6 +557,15 @@ function renderChannels() {
     textList.appendChild(btn);
   }
 
+  // Salas de voz: o botão em si é barato, mas os avatares de quem está
+  // dentro NÃO podem ser recriados a cada chamada — presence:update chega
+  // toda vez que alguém liga/desliga o indicador de "falando", ou seja,
+  // várias vezes por minuto numa conversa normal. Recriar o <img> do
+  // avatar nessa frequência é o que causa o piscar.
+  const oldOccupantBoxes = new Map(); // channelId -> box antigo, pra reaproveitar as linhas
+  for (const box of $$('.occupants', list)) oldOccupantBoxes.set(box.dataset.channelId, box);
+
+  list.innerHTML = '';
   for (const ch of guild.channels.filter((channel) => channel.type !== 'text')) {
     const here = presence[ch.id] || [];
     const active = S.voice && S.voice.guildId === guild.id && S.voice.channelId === ch.id;
@@ -495,19 +578,33 @@ function renderChannels() {
     list.appendChild(btn);
 
     if (here.length) {
+      const oldBox = oldOccupantBoxes.get(ch.id);
       const box = el('div', 'occupants');
+      box.dataset.channelId = ch.id;
+      const seenSids = new Set();
+
       for (const p of here) {
+        seenSids.add(p.sid);
         const isMe = S.me && p.user.id === S.me.id;
-        const rowEl = el('button', 'occupant' + (p.state && p.state.speaking ? ' speaking' : ''));
-        rowEl.innerHTML = `
-          ${avatarHTML(p.user, 'sm')}
-          <span class="nm">${esc(p.user.name)}${isMe ? ' (você)' : ''}</span>
-          <span class="tags">
-            ${p.state && p.state.screen ? `<span class="tag screen" title="Transmitindo">${icon('monitor', 11)}</span>` : ''}
-            ${p.state && !p.state.mic ? `<span class="tag muted" title="Microfone fechado">${icon('micOff', 11)}</span>` : ''}
-          </span>`;
-        rowEl.onclick = () => showProfile(p.user);
-        rowEl.oncontextmenu = (e) => showUserMenu(e, p.user);
+        let rowEl = oldBox && oldBox.querySelector(`[data-sid="${p.sid}"]`);
+        if (rowEl) rowEl.remove(); // tira do box velho, reaproveita no novo
+        else rowEl = el('button', 'occupant');
+        rowEl.dataset.sid = p.sid;
+
+        rowEl.classList.toggle('speaking', !!(p.state && p.state.speaking));
+
+        // Só reconstrói o miolo (com o <img> do avatar) se algo visual mudou de verdade.
+        const cacheKey = `${p.user.id}|${p.user.avatar}|${p.user.name}|${p.user.color}|${isMe}`;
+        if (rowEl.dataset.cacheKey !== cacheKey) {
+          rowEl.dataset.cacheKey = cacheKey;
+          rowEl.innerHTML = `${avatarHTML(p.user, 'sm')}<span class="nm">${esc(p.user.name)}${isMe ? ' (você)' : ''}</span><span class="tags"></span>`;
+          rowEl.onclick = () => showProfile(p.user);
+          rowEl.oncontextmenu = (e) => showUserMenu(e, p.user);
+        }
+        rowEl.querySelector('.tags').innerHTML =
+          `${p.state && p.state.screen ? `<span class="tag screen" title="Transmitindo">${icon('monitor', 11)}</span>` : ''}`
+          + `${p.state && !p.state.mic ? `<span class="tag muted" title="Microfone fechado">${icon('micOff', 11)}</span>` : ''}`;
+
         box.appendChild(rowEl);
       }
       list.appendChild(box);
@@ -624,6 +721,9 @@ function renderShareHud(micOpen, sharing) {
   $('#hud-mic').classList.toggle('off', !micOpen);
   setIcon($('#hud-ico-mic'), micOpen ? 'mic' : 'micOff', 16);
   $('#hud-pen').classList.toggle('on', Annot.isActive('local'));
+  const previewHidden = !!Voice.previewHidden;
+  $('#hud-preview').classList.toggle('on', previewHidden);
+  setIcon($('#hud-ico-preview'), previewHidden ? 'eyeOff' : 'eye', 16);
 }
 
 /* ------------------------------------------------- grade e destaque ---- */
@@ -646,17 +746,29 @@ function tileFor(id) {
       <span class="avatar lg"></span>
       <div class="who"></div>
     </div>
+    <div class="tile-watch hidden">
+      <div class="tile-watch-bg"></div>
+      <span class="tile-watch-live">${icon('zap', 12)} AO VIVO</span>
+      <button class="tile-watch-btn btn btn-primary">${icon('eye', 16)} Assistir transmissão</button>
+    </div>
     <div class="tile-badge hidden"></div>
     <div class="tile-bar">
       <span class="tile-name"></span>
       <input type="range" min="0" max="100" value="100" title="Volume" class="vol hidden">
       <button class="pen hidden" title="Rabiscar na tela (P)">${icon('pen', 16)}</button>
+      <button class="unwatch hidden" title="Parar de assistir">${icon('eyeOff', 16)}</button>
       <button class="pip hidden" title="Janela flutuante">${icon('pip', 16)}</button>
       <button class="focus" title="Destacar">${icon('maximize', 16)}</button>
       <button class="fs" title="Tela cheia">${icon('expand', 16)}</button>
     </div>`;
 
   const video = node.querySelector('video');
+  node.querySelector('.tile-watch-btn').onclick = (e) => {
+    e.stopPropagation();
+    Voice.watchPeer(id);
+    S.watching.add(id);
+    renderStageContent();
+  };
 
   node.querySelector('.fs').onclick = (e) => {
     e.stopPropagation();
@@ -667,6 +779,13 @@ function tileFor(id) {
     e.stopPropagation();
     if (document.pictureInPictureElement) document.exitPictureInPicture();
     else video.requestPictureInPicture().catch((err) => toast('Janela flutuante indisponível: ' + err.message));
+  };
+  node.querySelector('.unwatch').onclick = (e) => {
+    e.stopPropagation();
+    Voice.unwatchPeer(id);
+    S.watching.delete(id);
+    if (S.focusId === id) S.focusId = null;
+    renderStageContent();
   };
   node.querySelector('.focus').onclick = (e) => {
     e.stopPropagation();
@@ -689,9 +808,10 @@ function tileFor(id) {
 }
 
 function paintTile(id, info) {
-  const { user, stream, isLocal, sharing, speaking, status, canAnnotate } = info;
+  const { user, stream, isLocal, sharing, intendsScreen, speaking, status, canAnnotate } = info;
   const t = tileFor(id);
   const { el: node, video } = t;
+  const notWatchingYet = !isLocal && intendsScreen && !sharing && !S.watching.has(id);
 
   node.classList.toggle('speaking', !!speaking);
   node.classList.toggle('focused', S.focusId === id);
@@ -706,25 +826,51 @@ function paintTile(id, info) {
     }
     video.classList.remove('hidden');
     node.querySelector('.tile-idle').classList.add('hidden');
+    node.querySelector('.tile-watch').classList.add('hidden');
     node.querySelector('.pip').classList.toggle('hidden', !!isLocal);
     node.querySelector('.vol').classList.toggle('hidden', !!isLocal);
     node.querySelector('.pen').classList.toggle('hidden', !canAnnotate);
+    node.querySelector('.unwatch').classList.toggle('hidden', !!isLocal);
+  } else if (notWatchingYet) {
+    // Anunciou que está compartilhando, mas eu ainda não pedi pra assistir
+    // — só mostra a prévia (se tiver chegado alguma) e o botão, sem gastar
+    // banda recebendo o vídeo de verdade até eu clicar.
+    if (t.streamId) { video.srcObject = null; t.streamId = null; }
+    video.classList.add('hidden');
+    node.querySelector('.tile-idle').classList.add('hidden');
+    const watch = node.querySelector('.tile-watch');
+    watch.classList.remove('hidden');
+    const preview = S.previews.get(id);
+    if (watch.dataset.preview !== (preview || '')) {
+      watch.dataset.preview = preview || '';
+      watch.querySelector('.tile-watch-bg').style.backgroundImage = preview ? `url('${preview}')` : '';
+    }
+    for (const sel of ['.pip', '.vol', '.pen', '.unwatch']) node.querySelector(sel).classList.add('hidden');
   } else {
     if (t.streamId) { video.srcObject = null; t.streamId = null; }
     video.classList.add('hidden');
+    node.querySelector('.tile-watch').classList.add('hidden');
     const idle = node.querySelector('.tile-idle');
     idle.classList.remove('hidden');
     const av = idle.querySelector('.avatar');
-    if (user.avatar) av.innerHTML = `<img src="${assetUrl(esc(user.avatar))}" alt="">`;
-    else { av.innerHTML = ''; av.textContent = initials(user.name); av.style.background = user.color; }
+    // renderStageContent() roda a cada 2s e a cada troca de estado — sem
+    // esse cache, o <img> do avatar seria recriado (e piscaria) o tempo
+    // todo mesmo sem nada visual mudar de verdade.
+    const avatarKey = `${user.avatar}|${user.name}|${user.color}`;
+    if (av.dataset.cacheKey !== avatarKey) {
+      av.dataset.cacheKey = avatarKey;
+      if (user.avatar) av.innerHTML = `<img src="${assetUrl(esc(user.avatar))}" alt="">`;
+      else { av.innerHTML = ''; av.textContent = initials(user.name); av.style.background = user.color; }
+    }
     idle.querySelector('.who').textContent = status || (isLocal ? 'Você' : 'Sem tela compartilhada');
-    for (const sel of ['.pip', '.vol', '.pen']) node.querySelector(sel).classList.add('hidden');
+    for (const sel of ['.pip', '.vol', '.pen', '.unwatch']) node.querySelector(sel).classList.add('hidden');
   }
 
+  const live = sharing || intendsScreen;
   const badge = node.querySelector('.tile-badge');
-  badge.classList.toggle('hidden', !sharing);
-  badge.classList.toggle('live', !!sharing);
-  badge.textContent = sharing ? (isLocal ? 'TRANSMITINDO' : 'AO VIVO') : '';
+  badge.classList.toggle('hidden', !live);
+  badge.classList.toggle('live', !!live);
+  badge.textContent = live ? (isLocal ? 'TRANSMITINDO' : 'AO VIVO') : '';
 
   node.querySelector('.tile-name').textContent = isLocal ? `${user.name} (você)` : user.name;
   const foco = node.querySelector('.focus');
@@ -1057,6 +1203,10 @@ function wireActions() {
   $('#hud-pen').onclick = () => {
     Annot.setActive(Annot.isActive('local') ? null : 'local');
     syncAnnotBars();
+    renderControls();
+  };
+  $('#hud-preview').onclick = () => {
+    Voice.setPreviewHidden(!Voice.previewHidden);
     renderControls();
   };
   $('#hud-stop').onclick = () => Voice.stopScreen();

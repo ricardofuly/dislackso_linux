@@ -564,6 +564,23 @@ input[type=color]::-webkit-color-swatch { border: 0; border-radius: 50%; }
 }
 .tile-idle .who { color: var(--dim); font-size: 13.5px; line-height: 1.4; }
 
+.tile-watch {
+  position: absolute; inset: 0; z-index: 2;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px;
+  text-align: center; padding: 16px;
+}
+.tile-watch-bg {
+  position: absolute; inset: 0;
+  background: #000 center/cover no-repeat; filter: blur(1.5px) brightness(.55);
+}
+.tile-watch-live {
+  position: relative; z-index: 1;
+  display: inline-flex; align-items: center; gap: 5px;
+  background: var(--red); color: #fff; font-size: 11px; font-weight: 700; letter-spacing: .04em;
+  padding: 4px 10px; border-radius: var(--r-pill);
+}
+.tile-watch-btn { position: relative; z-index: 1; display: inline-flex; align-items: center; gap: 8px; }
+
 .tile-bar {
   position: absolute; left: 0; right: 0; bottom: 0; z-index: 3;
   display: flex; align-items: center; gap: 6px; padding: 10px 12px;
@@ -927,6 +944,41 @@ input[type=color]::-webkit-color-swatch { border: 0; border-radius: 50%; }
   padding: 13px 20px; border-radius: var(--r-md);
   box-shadow: var(--shadow); font-size: 14px;
   max-width: min(80vw, 520px); text-align: center; line-height: 1.45;
+}
+
+/* ------------------------------------------------------- aviso admin -- */
+.announce {
+  position: fixed; inset: 0; z-index: 110;
+  display: grid; place-items: center;
+  background: rgba(0, 0, 0, .78); backdrop-filter: blur(3px);
+  padding: 20px;
+}
+.announce.hidden { display: none; }
+.announce-card {
+  width: min(440px, 100%);
+  background: var(--bg-2);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  padding: 34px; text-align: center;
+  box-shadow: 0 0 0 1px var(--accent-soft), var(--shadow);
+  animation: announce-in 420ms var(--ease-bounce);
+}
+.announce-icon {
+  width: 62px; height: 62px; margin: 0 auto 16px;
+  border-radius: 50%; background: var(--accent); color: var(--accent-fg);
+  display: inline-flex; align-items: center; justify-content: center;
+  animation: announce-pulse 1.6s ease-in-out infinite;
+}
+.announce-card h2 { font-size: 20px; color: var(--bright); margin-bottom: 12px; }
+.announce-card p { color: var(--text); font-size: 15px; line-height: 1.55; white-space: pre-wrap; margin-bottom: 24px; }
+
+@keyframes announce-in {
+  from { opacity: 0; transform: scale(.85) translateY(10px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+@keyframes announce-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 var(--accent-soft); }
+  50%      { box-shadow: 0 0 0 10px transparent; }
 }
 
 /* ------------------------------------------------------ canais texto -- */

@@ -74,6 +74,9 @@ const ICON_PATHS = {
   starOff: '<path d="M2 2l20 20"/><path d="M9.5 5.7L12 2.5l2.9 6.3 6.7.7-5 4.7.6 2.9"/><path d="M5.9 9.6L2.5 9.5l5 4.7-1.4 6.8L12 17.5l3.8 2.2"/>',
   userPlus: '<circle cx="9" cy="8" r="4"/><path d="M2 21a7 7 0 0 1 14 0"/><path d="M19 8v6"/><path d="M22 11h-6"/>',
   pause: '<rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/>',
+  megaphone: '<path d="M3 11v2a2 2 0 0 0 2 2h1l2 6h2l-1.5-6H10l9 4V5l-9 4H5a2 2 0 0 0-2 2z"/><path d="M17 8a3 3 0 0 1 0 8"/>',
+  eyeOff: '<path d="M2 2l20 20"/><path d="M9.9 5.1A10.4 10.4 0 0 1 12 5c6 0 10 7 10 7a17.9 17.9 0 0 1-3.2 3.9"/><path d="M6.6 6.6C3.5 8.5 2 12 2 12s4 7 10 7a9.6 9.6 0 0 0 4.4-1.1"/><path d="M9.9 14.1a3 3 0 0 0 4.2-4.2"/>',
+  eye: '<path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/>',
 };
 
 /**
