@@ -35,7 +35,7 @@ export function ChannelSidebar({ onOpenSettings }: ChannelSidebarProps) {
   const voiceChannels = guild?.channels.filter((c) => c.type !== 'text') ?? [];
 
   return (
-    <Glass as="aside" variant="panel" className="flex w-58 shrink-0 flex-col">
+    <Glass as="aside" variant="panel" className="flex w-46 shrink-0 flex-col xl:w-58">
       <header className="flex h-12 items-center gap-2 border-b border-line px-3">
         <span className="flex-1 truncate text-sm font-semibold text-bright">
           {guild?.name ?? 'Selecione um servidor'}

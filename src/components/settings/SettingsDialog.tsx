@@ -89,10 +89,10 @@ export function SettingsDialog({ section, onNavigate, onClose }: SettingsDialogP
             Preferências de conta, áudio, transmissão e aparência.
           </Dialog.Description>
 
-          <nav className="w-56 shrink-0 space-y-0.5 overflow-y-auto bg-bg-1 p-3">
+          <nav className="w-14 shrink-0 space-y-0.5 overflow-y-auto bg-bg-1 p-2 md:w-56 md:p-3">
             {groups.map((group) => (
               <div key={group.label}>
-                <p className="px-2 pt-4 pb-1 text-[11px] font-semibold tracking-wider text-dim uppercase">
+                <p className="hidden px-2 pt-4 pb-1 text-[11px] font-semibold tracking-wider text-dim uppercase md:block">
                   {group.label}
                 </p>
                 {group.items.map((item) => (
@@ -150,14 +150,15 @@ function NavItem({ item, active, onSelect }: NavItemProps) {
     <button
       type="button"
       onClick={onSelect}
+      title={item.label}
       className={cn(
-        'flex w-full items-center gap-2.5 rounded-[var(--radius-sm)] px-2.5 py-2 text-[13px]',
-        'transition-colors duration-(--duration-fast)',
+        'flex w-full items-center justify-center gap-2.5 rounded-[var(--radius-sm)] px-2.5 py-2',
+        'text-[13px] transition-colors duration-(--duration-fast) md:justify-start',
         active ? 'bg-active text-bright' : 'text-dim hover:bg-hover hover:text-text',
       )}
     >
       <Icon size={16} className="shrink-0" />
-      {item.label}
+      <span className="hidden md:inline">{item.label}</span>
     </button>
   );
 }

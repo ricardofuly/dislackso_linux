@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { storage, KEYS } from '@/lib/storage';
 import { isDesktop } from '@/lib/platform';
@@ -12,6 +12,17 @@ import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import { useConnectionRefresh } from '@/app/useEngineBridge';
 import { useRoom } from '@/stores/room';
 
+/** Em janela estreita a coluna de membros encolhe antes de o palco sofrer. */
+function useMembersWidth(): number {
+  const [width, setWidth] = useState(() => (window.innerWidth < 1180 ? 184 : 232));
+  useEffect(() => {
+    const onResize = () => setWidth(window.innerWidth < 1180 ? 184 : 232);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
+  return width;
+}
+
 /**
  * O esqueleto do app: quatro colunas.
  *
@@ -22,6 +33,7 @@ import { useRoom } from '@/stores/room';
  */
 export function Shell() {
   const [members, setMembers] = useState(() => storage.get(KEYS.membersOpen, true));
+  const membersWidth = useMembersWidth();
   const [settingsSection, setSettingsSection] = useState<string | null>(null);
   const inRoom = Boolean(useRoom((s) => s.room));
 
@@ -49,7 +61,7 @@ export function Shell() {
             <motion.div
               key="members"
               initial={{ width: 0, opacity: 0 }}
-              animate={{ width: 232, opacity: 1 }}
+              animate={{ width: membersWidth, opacity: 1 }}
               exit={{ width: 0, opacity: 0 }}
               transition={{ type: 'spring', stiffness: 340, damping: 36 }}
               className="overflow-hidden"

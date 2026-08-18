@@ -40,7 +40,7 @@ export function MembersPanel() {
   }, [guild, friends, online]);
 
   return (
-    <Glass as="aside" variant="panel" className="flex h-full w-58 flex-col overflow-hidden">
+    <Glass as="aside" variant="panel" className="flex h-full w-full flex-col overflow-hidden">
       <div className="min-h-0 flex-1 space-y-0.5 overflow-y-auto p-2">
         <MemberSection label="Online" members={here} online />
         <MemberSection label="Offline" members={away} />
