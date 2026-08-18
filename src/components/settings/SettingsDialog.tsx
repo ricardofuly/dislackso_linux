@@ -1,4 +1,4 @@
-import { AnimatePresence, motion } from 'motion/react';
+import { motion } from 'motion/react';
 import {
   Headphones, Image, Info, Monitor, MonitorUp, Palette, Pen, RefreshCw, Sparkles, User, X,
 } from 'lucide-react';
@@ -109,18 +109,21 @@ export function SettingsDialog({ section, onNavigate, onClose }: SettingsDialogP
 
           <div className="min-w-0 flex-1 overflow-y-auto bg-bg-2">
             <div className="mx-auto max-w-2xl px-8 py-10">
-              <AnimatePresence mode="wait">
-                <motion.div
-                  key={section}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -6 }}
-                  transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-                >
-                  <h2 className="mb-6 text-xl font-semibold text-bright">{current?.label}</h2>
-                  {current?.render()}
-                </motion.div>
-              </AnimatePresence>
+              {/*
+                A `key` remonta o bloco a cada seção, e com isso a animação de
+                entrada roda de novo. Sem AnimatePresence de propósito: a seção
+                antiga sai na hora, e não há animação de saída que possa
+                emperrar e deixar o conteúdo velho na tela.
+              */}
+              <motion.div
+                key={section}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+              >
+                <h2 className="mb-6 text-xl font-semibold text-bright">{current?.label}</h2>
+                {current?.render()}
+              </motion.div>
             </div>
           </div>
 

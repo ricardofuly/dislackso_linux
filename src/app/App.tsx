@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { AnimatePresence, motion } from 'motion/react';
+import { motion } from 'motion/react';
 import { GlassFilters } from '@/components/ui/Glass';
 import { Toaster } from '@/components/ui/Toaster';
 import { TooltipProvider } from '@/components/ui/Tooltip';
@@ -45,38 +45,31 @@ export function App() {
       <GlassFilters />
 
       {/*
-        Um filho só, trocado pela `key`.
+        A troca entre entrada e app é uma remoção direta, sem AnimatePresence.
 
-        Sem `mode="wait"` de propósito: nesse modo o AnimatePresence só monta o
-        próximo depois que o anterior termina de sair, e a tela de entrada tem
-        animações infinitas no fundo — a saída nunca "terminava", e entrar na
-        conta deixava o app parado na tela de login mesmo com a sessão já
-        aberta. Em sobreposição, a entrada some por cima enquanto o app aparece.
+        Já foi uma transição animada, e o custo era alto demais: a saída da
+        tela de entrada dependia de uma animação terminar, e quando ela não
+        terminava a tela ficava presa por cima — visível, cobrindo o app e
+        engolindo todo clique. Uma animação que pode deixar a interface
+        inutilizável não paga o que custa. Quem entra continua vendo o app
+        surgir, pela animação de entrada do próprio Shell.
       */}
-      <AnimatePresence initial={false}>
-        {phase === 'gate' ? (
-          <motion.div
-            key="gate"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0, scale: 1.02 }}
-            transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
-            className="fixed inset-0 z-40"
-          >
-            <Gate />
-          </motion.div>
-        ) : phase === 'ready' ? (
-          <motion.div
-            key="shell"
-            initial={{ opacity: 0, scale: 0.99 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.32, ease: [0.16, 1, 0.3, 1] }}
-            className="h-full"
-          >
-            <Shell />
-          </motion.div>
-        ) : null}
-      </AnimatePresence>
+      {phase === 'gate' && (
+        <div className="fixed inset-0 z-40">
+          <Gate />
+        </div>
+      )}
+
+      {phase === 'ready' && (
+        <motion.div
+          initial={{ opacity: 0, scale: 0.99 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.32, ease: [0.16, 1, 0.3, 1] }}
+          className="h-full"
+        >
+          <Shell />
+        </motion.div>
+      )}
 
       <AnnouncementDialog />
       <InviteCatcher />
