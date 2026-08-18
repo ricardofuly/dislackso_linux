@@ -108,7 +108,16 @@ async function submitGate() {
     if (S.gateMode === 'login') {
       res = await ask('auth:login', { username, password });
     } else if (legacyUserId()) {
-      res = await ask('auth:claim', { userId: legacyUserId(), username, password });
+      try {
+        res = await ask('auth:claim', { userId: legacyUserId(), username, password });
+      } catch (err) {
+        // O userId salvo neste navegador não existe (mais) no servidor —
+        // não tem o que "proteger", então cria uma conta nova em vez de
+        // travar o usuário numa mensagem de erro sem saída.
+        if (err.message !== 'Conta não encontrada.') throw err;
+        LS.del('userId');
+        res = await ask('auth:register', { username, password, name: username });
+      }
     } else {
       res = await ask('auth:register', { username, password, name: username });
     }

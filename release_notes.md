@@ -1,3 +1,10 @@
+### Versão 3.3.1
+
+* **Correção:** quando o navegador/app tinha um `userId` salvo de uma instalação ou teste
+  anterior que não existe mais no servidor, a tela de "proteger conta" travava com "Conta
+  não encontrada", sem opção de criar uma conta nova. Agora, nesse caso, o app cai
+  automaticamente para criar uma conta nova em vez de travar.
+
 ### Novidades na versão 3.3.0
 
 * **Login por nickname e senha:** entrar agora exige nickname e senha — sem e-mail. A conta
