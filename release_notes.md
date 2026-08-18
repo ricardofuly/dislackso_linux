@@ -1,3 +1,29 @@
+### Versão 3.4.0 — foco em qualidade de transmissão
+
+* **Qualidade adaptativa:** anunciar 1080p60 e entregar 4fps por causa de rede fraca é pior
+  do que baixar sozinho pra um nível que a conexão sustenta de verdade. Agora o app
+  acompanha as estatísticas reais da transmissão e, depois de alguns segundos consistentes
+  de sufoco (FPS bem abaixo do combinado, banda como motivo confirmado), desce um degrau de
+  qualidade automaticamente e avisa — em vez de ficar travado numa qualidade que a rede não
+  aguenta.
+* **Voz da call abaixada ao compartilhar áudio:** enquanto você transmite com áudio do
+  sistema, a voz de quem está na chamada agora é abaixada automaticamente (não desligada) —
+  reduz bastante o quanto ela vaza na sua transmissão. Dá pra desligar em
+  *Configurações › Transmissão*. Importante: o Windows não separa áudio por aplicativo, então
+  isso reduz mas não elimina 100% — pra eliminar de vez, configure uma saída de áudio
+  separada pra voz (ver DEPLOY.md).
+* **Painel flutuante ao compartilhar tela:** como no Slack — enquanto você transmite, aparece
+  um painel flutuante com atalho pro microfone, pra caneta na sua própria tela e pra parar de
+  transmitir, com botão de minimizar.
+* **Menu de contexto nos usuários:** botão direito num membro da sala (na lista de membros ou
+  na sala de voz) abre opções de mutar/desmutar só pra você, ajustar o volume individual, e
+  adicionar/remover como amigo — amigos ficam salvos na sua conta (aparecem com uma estrela e
+  sempre no topo da lista) e valem em qualquer dispositivo.
+* **Anotações no próprio compartilhamento:** confirmado que, como no Slack, quando alguém
+  rabisca na sua tela compartilhada, o rabisco já aparece na sua própria prévia também — não
+  só pra quem está assistindo (precisa da opção "Ver a própria tela" ligada, que já vem
+  ligada por padrão).
+
 ### Versão 3.3.6
 
 * **Melhoria de conectividade:** amigos atrás de CGNAT ou NAT simétrico (comum em internet

@@ -426,7 +426,41 @@ input[type=color]::-webkit-color-swatch { border: 0; border-radius: 50%; }
 }
 
 /* ------------------------------------------------------------ stage ---- */
-.stage { flex: 1; display: flex; flex-direction: column; min-width: 0; background: var(--bg-3); }
+.stage { flex: 1; display: flex; flex-direction: column; min-width: 0; background: var(--bg-3); position: relative; }
+
+/* --------------------------------------------------- painel flutuante -- */
+.share-hud {
+  position: absolute; top: 58px; right: 16px; z-index: 15;
+  display: flex; align-items: center;
+  background: rgba(10, 10, 12, .86); backdrop-filter: blur(10px);
+  border: 1px solid var(--line); border-radius: var(--r-pill);
+  box-shadow: var(--shadow);
+  transition: opacity var(--t-fast) var(--ease);
+}
+.share-hud.hidden { display: none; }
+.hud-body { display: flex; align-items: center; gap: 4px; padding: 6px 8px 6px 4px; }
+.share-hud.collapsed .hud-body { display: none; }
+.hud-label {
+  font-size: 12px; color: var(--dim); padding: 0 4px 0 8px;
+  white-space: nowrap;
+}
+.hud-toggle {
+  width: 28px; height: 28px; flex: none; margin: 6px 0 6px 6px;
+  border-radius: 50%; color: var(--dim);
+  display: inline-flex; align-items: center; justify-content: center;
+  transition: background var(--t-fast) var(--ease), color var(--t-fast) var(--ease);
+}
+.share-hud.collapsed .hud-toggle { margin: 6px; }
+.hud-toggle:hover { background: var(--bg-hover); color: var(--bright); }
+.hud-btn {
+  width: 32px; height: 32px; border-radius: 50%; color: var(--text);
+  display: inline-flex; align-items: center; justify-content: center;
+  transition: background var(--t-fast) var(--ease), color var(--t-fast) var(--ease);
+}
+.hud-btn:hover { background: var(--bg-hover); }
+.hud-btn.on { background: var(--accent); color: var(--accent-fg); }
+.hud-btn.off { background: var(--red); color: #fff; }
+.hud-danger:hover { background: var(--red); color: #fff; }
 .stage-head {
   height: 48px; flex: none;
   display: flex; align-items: center; gap: 10px; padding: 0 16px;
@@ -463,6 +497,9 @@ input[type=color]::-webkit-color-swatch { border: 0; border-radius: 50%; }
 .member-row.online .avatar::after { background: var(--green); }
 .member-row.offline { opacity: .5; }
 .member-row .nm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.friend-badge { flex: none; color: #f5c518; display: inline-flex; }
+
+.user-menu { position: fixed; top: 0; left: 0; right: auto; z-index: 40; width: 220px; }
 
 .stage-empty {
   flex: 1; display: flex; flex-direction: column;

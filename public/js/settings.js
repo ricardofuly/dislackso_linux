@@ -41,6 +41,7 @@ const DEFAULT_SETTINGS = {
   autoGainControl: true,
   micMode: 'voz',          // 'voz' | 'ptt'
   pttKey: 'Space',
+  duckVoiceOnShare: true,
 
   // aplicativo
   autoUpdate: true,

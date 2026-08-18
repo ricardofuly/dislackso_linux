@@ -95,6 +95,19 @@
         <div id="grid" class="grid"></div>
       </div>
 
+      <!-- painel flutuante: só aparece pra quem está transmitindo -->
+      <div id="share-hud" class="share-hud hidden">
+        <button id="hud-toggle" class="hud-toggle" title="Minimizar">
+          <span data-icon="minimize" data-size="14"></span>
+        </button>
+        <div id="hud-body" class="hud-body">
+          <span class="hud-label">Você está transmitindo</span>
+          <button id="hud-mic" class="hud-btn" title="Microfone (M)"><span class="i" id="hud-ico-mic"></span></button>
+          <button id="hud-pen" class="hud-btn" title="Rabiscar na própria tela (P)"><span data-icon="pen" data-size="16"></span></button>
+          <button id="hud-stop" class="hud-btn hud-danger" title="Parar de transmitir"><span data-icon="screenOff" data-size="16"></span></button>
+        </div>
+      </div>
+
       <section id="text-chat" class="text-chat hidden" aria-label="Canal de texto">
         <div id="message-list" class="message-list" aria-live="polite"></div>
         <form id="message-form" class="message-form">

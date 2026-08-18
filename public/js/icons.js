@@ -70,6 +70,10 @@ const ICON_PATHS = {
   info: '<circle cx="12" cy="12" r="9.5"/><path d="M12 11.5V17"/><circle cx="12" cy="7.8" r="1" fill="currentColor" stroke="none"/>',
   activity: '<path d="M22 12h-4l-3 8-6-16-3 8H2"/>',
   shield: '<path d="M12 22s8-4 8-10V5.5L12 2.5 4 5.5V12c0 6 8 10 8 10z"/>',
+  star: '<path d="M12 2.5l2.9 6.3 6.7.7-5 4.7 1.4 6.8L12 17.5l-6 3.5 1.4-6.8-5-4.7 6.7-.7z"/>',
+  starOff: '<path d="M2 2l20 20"/><path d="M9.5 5.7L12 2.5l2.9 6.3 6.7.7-5 4.7.6 2.9"/><path d="M5.9 9.6L2.5 9.5l5 4.7-1.4 6.8L12 17.5l3.8 2.2"/>',
+  userPlus: '<circle cx="9" cy="8" r="4"/><path d="M2 21a7 7 0 0 1 14 0"/><path d="M19 8v6"/><path d="M22 11h-6"/>',
+  pause: '<rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/>',
 };
 
 /**

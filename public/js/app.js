@@ -19,6 +19,9 @@ const S = {
   sharingSeen: new Set(),
   gateMode: 'login',   // 'login' | 'register'
   gateBusy: false,
+  localMutes: new Set(),    // sid -> mutado só pra mim
+  localVolumes: new Map(),  // sid -> 0..1, só pra mim
+  friends: new Set(),       // userId de quem eu marquei como amigo
 };
 
 const tiles = new Map();     // id -> { el, video, streamId, annotActive }
@@ -142,6 +145,8 @@ function establishSession(res) {
   LS.set('authToken', res.token);
   LS.set('name', res.user.name);
   S.guilds = res.guilds;
+  S.friends = new Set(res.friends || []);
+  LS.set('friendsCache', [...S.friends]);
   hideGate();
 
   Voice.configure({ socket: S.socket, sid: res.sid, iceServers: res.iceServers });
@@ -338,7 +343,11 @@ function renderMembers() {
   if (!guild) { box.innerHTML = ''; return; }
 
   const online = S.online[guild.id] || new Set();
-  const sorted = [...guild.members].sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
+  const sorted = [...guild.members].sort((a, b) => {
+    const fa = S.friends.has(a.id), fb = S.friends.has(b.id);
+    if (fa !== fb) return fa ? -1 : 1;
+    return a.name.localeCompare(b.name, 'pt-BR');
+  });
   const onlineMembers = sorted.filter((m) => online.has(m.id));
   const offlineMembers = sorted.filter((m) => !online.has(m.id));
 
@@ -348,17 +357,87 @@ function renderMembers() {
       <button class="member-row ${online.has(m.id) ? 'online' : 'offline'}" data-id="${esc(m.id)}">
         ${avatarHTML(m, 'sm')}
         <span class="nm">${esc(m.name)}${S.me && m.id === S.me.id ? ' (você)' : ''}</span>
+        ${S.friends.has(m.id) ? `<span class="friend-badge" title="Amigo">${icon('star', 12)}</span>` : ''}
       </button>`).join('');
     return `<div class="section-label">${esc(label)} — ${members.length}</div>${rows}`;
   };
 
   box.innerHTML = section('Online', onlineMembers) + section('Offline', offlineMembers);
   for (const btn of $$('.member-row', box)) {
-    btn.onclick = () => {
-      const member = guild.members.find((m) => m.id === btn.dataset.id);
-      if (member) showProfile(member);
-    };
+    const member = guild.members.find((m) => m.id === btn.dataset.id);
+    if (!member) continue;
+    btn.onclick = () => showProfile(member);
+    btn.oncontextmenu = (e) => showUserMenu(e, member);
   }
+}
+
+/* -------------------------------------------------- menu de contexto --- */
+
+function closeUserMenu() {
+  for (const m of $$('.user-menu')) m.remove();
+}
+
+function bumpVolume(sid, delta) {
+  const cur = S.localVolumes.get(sid);
+  const next = clamp((cur == null ? 1 : cur) + delta, 0, 2);
+  S.localVolumes.set(sid, next);
+  refreshAllPeerVolumes();
+  toast(`Volume de quem tá falando: ${Math.round(next * 100)}%`);
+}
+
+function toggleFriend(userId, add) {
+  ask(add ? 'friend:add' : 'friend:remove', { friendId: userId })
+    .then(({ friends }) => {
+      S.friends = new Set(friends);
+      LS.set('friendsCache', friends);
+      renderMembers();
+      renderChannels();
+    })
+    .catch((err) => toast(err.message));
+}
+
+/** Botão direito num usuário: mutar/volume (só quem está na mesma sala de voz) e amigos. */
+function showUserMenu(e, user) {
+  e.preventDefault();
+  e.stopPropagation();
+  closeUserMenu();
+  if (!S.me || user.id === S.me.id) return;
+
+  const peer = [...Voice.peers.values()].find((p) => p.user.id === user.id);
+  const sid = peer ? peer.sid : null;
+  const muted = sid && S.localMutes.has(sid);
+  const isFriend = S.friends.has(user.id);
+
+  const menu = el('div', 'popover user-menu');
+  menu.style.left = `${e.clientX}px`;
+  menu.style.top = `${e.clientY}px`;
+
+  const item = (icoName, label, onClick) => {
+    const b = el('button', '', `<span data-icon="${icoName}" data-size="16"></span> ${esc(label)}`);
+    b.onclick = () => { onClick(); closeUserMenu(); };
+    menu.appendChild(b);
+  };
+
+  if (sid) {
+    item(muted ? 'volume' : 'volumeOff', muted ? 'Desmutar' : 'Mutar só pra mim', () => {
+      if (muted) S.localMutes.delete(sid); else S.localMutes.add(sid);
+      refreshAllPeerVolumes();
+    });
+    item('volumeLow', 'Diminuir volume', () => bumpVolume(sid, -0.2));
+    item('volume', 'Aumentar volume', () => bumpVolume(sid, 0.2));
+    menu.appendChild(Object.assign(document.createElement('hr')));
+  }
+
+  item(isFriend ? 'starOff' : 'userPlus', isFriend ? 'Remover dos amigos' : 'Adicionar como amigo',
+    () => toggleFriend(user.id, !isFriend));
+  item('user', 'Ver perfil', () => showProfile(user));
+
+  document.body.appendChild(menu);
+  hydrateIcons(menu);
+
+  const r = menu.getBoundingClientRect();
+  if (r.right > window.innerWidth) menu.style.left = `${Math.max(8, window.innerWidth - r.width - 8)}px`;
+  if (r.bottom > window.innerHeight) menu.style.top = `${Math.max(8, window.innerHeight - r.height - 8)}px`;
 }
 
 function renderRail() {
@@ -428,6 +507,7 @@ function renderChannels() {
             ${p.state && !p.state.mic ? `<span class="tag muted" title="Microfone fechado">${icon('micOff', 11)}</span>` : ''}
           </span>`;
         rowEl.onclick = () => showProfile(p.user);
+        rowEl.oncontextmenu = (e) => showUserMenu(e, p.user);
         box.appendChild(rowEl);
       }
       list.appendChild(box);
@@ -532,6 +612,18 @@ function renderControls() {
   setIcon($('#ico-screen'), sharing ? 'screenOff' : 'screenShare', 18);
   $('#txt-screen').textContent = sharing ? 'Parar de transmitir' : 'Compartilhar tela';
   $('#txt-quality').textContent = Voice.quality.label.replace(' ', '');
+
+  renderShareHud(open, sharing);
+}
+
+/** Painel flutuante estilo Slack: só aparece pra quem está transmitindo. */
+function renderShareHud(micOpen, sharing) {
+  $('#share-hud').classList.toggle('hidden', !sharing);
+  if (!sharing) return;
+  $('#hud-mic').classList.toggle('on', micOpen);
+  $('#hud-mic').classList.toggle('off', !micOpen);
+  setIcon($('#hud-ico-mic'), micOpen ? 'mic' : 'micOff', 16);
+  $('#hud-pen').classList.toggle('on', Annot.isActive('local'));
 }
 
 /* ------------------------------------------------- grade e destaque ---- */
@@ -783,6 +875,7 @@ function attachAudio(peer) {
     node.play().catch(() => {});
     App.applySink();
   }
+  applyPeerVolume(peer.sid, node);
 }
 
 function dropAudio(sid) {
@@ -791,6 +884,27 @@ function dropAudio(sid) {
   node.srcObject = null;
   node.remove();
   audioEls.delete(sid);
+}
+
+/**
+ * Volume final de um peer: 0 se foi mutado localmente (só pra mim, não
+ * afeta os outros), senão o volume individual que eu ajustei (padrão 1),
+ * abaixado ainda mais enquanto eu compartilho áudio do sistema — pra voz
+ * da call vazar menos na minha transmissão (não some 100%, é limitação do
+ * Windows: o loopback pega tudo que sai pelos alto-falantes).
+ */
+function applyPeerVolume(sid, node) {
+  if (S.localMutes.has(sid)) { node.volume = 0; return; }
+  const base = S.localVolumes.get(sid);
+  const vol = base == null ? 1 : base;
+  const sharingWithAudio = Voice.isSharing()
+    && Voice.local.screenStream && Voice.local.screenStream.getAudioTracks().length > 0;
+  const duck = sharingWithAudio && Settings.get('duckVoiceOnShare') !== false ? 0.25 : 1;
+  node.volume = clamp(vol * duck, 0, 1);
+}
+
+function refreshAllPeerVolumes() {
+  for (const [sid, node] of audioEls) applyPeerVolume(sid, node);
 }
 
 /* ------------------------------------------------- eventos do motor ---- */
@@ -802,15 +916,18 @@ Voice.on('notice', (msg) => toast(msg, 6000));
 Voice.on('screenstart', () => {
   if (Settings.get('autoFocus') && Settings.get('selfPreview')) S.focusId = 'local';
   renderStageContent();
+  refreshAllPeerVolumes();
   toast('Você começou a transmitir sua tela.');
   feedback('screenstart');
 });
 Voice.on('screenstop', () => {
   if (S.focusId === 'local') S.focusId = null;
   renderStageContent();
+  refreshAllPeerVolumes();
   toast('Você parou de transmitir.');
   feedback('screenstop');
 });
+Voice.on('qualitydowngraded', () => renderControls());
 
 /* ========================================================= entrar/sair == */
 
@@ -922,6 +1039,8 @@ function wireActions() {
     $('#guild-menu').classList.toggle('hidden');
   };
   document.addEventListener('click', () => $('#guild-menu').classList.add('hidden'));
+  document.addEventListener('click', closeUserMenu);
+  document.addEventListener('contextmenu', (e) => { if (!e.target.closest('.user-menu')) closeUserMenu(); });
   $('#guild-menu').onclick = onGuildMenu;
 
   $('#btn-toggle-members').onclick = () => {
@@ -929,6 +1048,18 @@ function wireActions() {
     LS.set('membersOpen', !open);
   };
   if (LS.get('membersOpen', true) === false) $('#members-sidebar').classList.add('hidden');
+
+  $('#hud-toggle').onclick = () => {
+    const collapsed = $('#share-hud').classList.toggle('collapsed');
+    setIcon($('#hud-toggle span'), collapsed ? 'expand' : 'minimize', 14);
+  };
+  $('#hud-mic').onclick = () => Voice.toggleMic();
+  $('#hud-pen').onclick = () => {
+    Annot.setActive(Annot.isActive('local') ? null : 'local');
+    syncAnnotBars();
+    renderControls();
+  };
+  $('#hud-stop').onclick = () => Voice.stopScreen();
 }
 
 function joinByCode(code) {
@@ -1110,8 +1241,10 @@ if (navigator.mediaDevices) {
 function hydrateCache() {
   const guilds = LS.get('guildsCache', []);
   const me = LS.get('profileCache', null);
+  const friends = LS.get('friendsCache', []);
   if (Array.isArray(guilds) && guilds.length) S.guilds = guilds;
   if (me) S.me = me;
+  if (Array.isArray(friends)) S.friends = new Set(friends);
   if (!S.activeGuildId && S.guilds.length) S.activeGuildId = S.guilds[0].id;
   if (S.guilds.length || S.me) renderAll();
 }

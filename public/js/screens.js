@@ -478,9 +478,19 @@ const SettingsUI = {
       control: switchControl(Settings.get('selfPreview'), (v) => { Settings.set('selfPreview', v); App.refresh(); }),
     }));
 
+    box.appendChild(row({
+      title: 'Abaixar a call ao compartilhar áudio',
+      desc: 'Enquanto você transmite com áudio do sistema, abaixa (não desliga) a voz de quem está '
+          + 'na chamada — reduz o quanto ela vaza na sua transmissão. O Windows não separa por '
+          + 'aplicativo, então não dá pra eliminar 100%; pra isso, configure uma saída de áudio '
+          + 'separada pra voz (veja DEPLOY.md).',
+      control: switchControl(Settings.get('duckVoiceOnShare'), (v) => { Settings.set('duckVoiceOnShare', v); refreshAllPeerVolumes(); }),
+    }));
+
     const note = el('p', 'set-note',
       'A transmissão é ponto a ponto: em 1080p60 para 3 amigos você envia cerca de 24 Mbps no total. '
-      + 'Se a imagem picotar, desça um nível de qualidade.');
+      + 'Se a rede não aguentar, o app baixa a qualidade sozinho depois de alguns segundos — dá pra '
+      + 'escolher de novo aqui a qualquer momento.');
     box.appendChild(note);
   },
 

@@ -230,6 +230,7 @@ function createServer(options = {}) {
       banner: '',
       bio: '',
       pronouns: '',
+      friends: [],
       createdAt: Date.now(),
     };
   }
@@ -434,7 +435,10 @@ function createServer(options = {}) {
     sessions.set(socket.id, { userId: user.id, room: null, state: emptyState() });
     const guilds = guildsOf(user.id);
     for (const g of guilds) socket.join(guildRoom(g.id));
-    const payload = { user: publicUser(user.id), guilds: guilds.map(publicGuild), iceServers, sid: socket.id, token: user.token };
+    const payload = {
+      user: publicUser(user.id), guilds: guilds.map(publicGuild), iceServers, sid: socket.id,
+      token: user.token, friends: user.friends || [],
+    };
     for (const g of guilds) { pushPresence(g.id); pushOnline(g.id); }
     return payload;
   }
@@ -526,6 +530,31 @@ function createServer(options = {}) {
         io.to(guildRoom(g.id)).emit('user:update', me);
         pushPresence(g.id);
       }
+    }));
+
+    /* -------------------------------------------------------- amigos --- */
+
+    socket.on('friend:add', ({ friendId } = {}, cb) => guard(cb, () => {
+      const s = sessions.get(socket.id);
+      if (!s) throw new Error('nao autenticado');
+      const user = db.users[s.userId];
+      if (!user) throw new Error('usuario inexistente');
+      if (!friendId || !db.users[friendId]) throw new Error('usuario nao encontrado');
+      if (friendId === user.id) throw new Error('nao dá pra se adicionar');
+      user.friends = user.friends || [];
+      if (!user.friends.includes(friendId)) user.friends.push(friendId);
+      save();
+      cb({ friends: user.friends });
+    }));
+
+    socket.on('friend:remove', ({ friendId } = {}, cb) => guard(cb, () => {
+      const s = sessions.get(socket.id);
+      if (!s) throw new Error('nao autenticado');
+      const user = db.users[s.userId];
+      if (!user) throw new Error('usuario inexistente');
+      user.friends = (user.friends || []).filter((id) => id !== friendId);
+      save();
+      cb({ friends: user.friends });
     }));
 
     /* ------------------------------------------------------- guilds --- */

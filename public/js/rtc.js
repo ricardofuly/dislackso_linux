@@ -27,6 +27,9 @@ const QUALITY_PRESETS = {
   '4k30':    { label: '4K 30fps',    w: 3840, h: 2160, fps: 30, video: 16_000_000, audio: 256_000 },
 };
 
+/** Do mais pesado pro mais leve — usada pra baixar um degrau quando a rede não aguenta. */
+const QUALITY_LADDER = ['4k30', '1440p60', '1080p60', '1080p30', '720p30'];
+
 const CODEC_ORDER = ['video/VP9', 'video/H264', 'video/AV1', 'video/VP8'];
 
 /* -------------------------------------------------------- sdp helpers --- */
@@ -340,6 +343,9 @@ class VoiceEngine {
     this.pttHeld = false;      // tecla de falar pressionada
     this.speaking = false;
     this.inRoom = false;
+
+    this.congestionTimer = 0;
+    this.congestionStrikes = 0;
   }
 
   /* ---- eventos ---- */
@@ -542,6 +548,7 @@ class VoiceEngine {
 
   stop() {
     this.inRoom = false;
+    this.stopCongestionWatch();
     for (const peer of this.peers.values()) peer.close();
     this.peers.clear();
     this.pending.clear();
@@ -691,11 +698,13 @@ class VoiceEngine {
     this.publishState();
     this.emit('localchange');
     this.emit('screenstart');
+    this.watchCongestion();
   }
 
   stopScreen() {
     const stream = this.local.screenStream;
     if (!stream) return;
+    this.stopCongestionWatch();
     for (const peer of this.peers.values()) peer.removeScreen();
     for (const t of stream.getTracks()) t.stop();
     this.local.screenStream = null;
@@ -705,6 +714,65 @@ class VoiceEngine {
   }
 
   isSharing() { return !!this.local.screenStream; }
+
+  /* ---------------------------------------------- qualidade adaptativa -- */
+
+  /**
+   * Fica de olho no bitrate real da transmissão. Anunciar "1080p60" e entregar
+   * 4fps por minutos a fio é pior do que baixar sozinho pra um degrau que a
+   * rede realmente sustenta — aqui a gente detecta isso pelas estatísticas do
+   * WebRTC (framesPerSecond real x meta, e o motivo que o próprio navegador
+   * reporta pra estar limitando) e desce um degrau depois de alguns
+   * segundos consistentes de sufoco, em vez de deixar do jeito que está.
+   */
+  watchCongestion() {
+    this.stopCongestionWatch();
+    this.congestionStrikes = 0;
+    this.congestionTimer = setInterval(async () => {
+      if (!this.local.screenStream || !this.peers.size) return;
+
+      let worstFps = Infinity;
+      let bandwidthLimited = false;
+      for (const peer of this.peers.values()) {
+        let stats;
+        try { stats = await peer.pc.getStats(); } catch { continue; }
+        stats.forEach((r) => {
+          if (r.type !== 'outbound-rtp' || r.kind !== 'video' || r.isRemote) return;
+          const fps = r.framesPerSecond || 0;
+          if (fps < worstFps) worstFps = fps;
+          if (r.qualityLimitationReason === 'bandwidth') bandwidthLimited = true;
+        });
+      }
+      if (worstFps === Infinity) return; // ainda sem stats — conexão recém-aberta
+
+      const strugling = bandwidthLimited && worstFps < this.quality.fps * 0.4;
+      if (!strugling) { this.congestionStrikes = 0; return; }
+
+      this.congestionStrikes++;
+      if (this.congestionStrikes >= 3) {
+        this.congestionStrikes = 0;
+        this.downgradeQuality();
+      }
+    }, 4000);
+  }
+
+  stopCongestionWatch() {
+    clearInterval(this.congestionTimer);
+    this.congestionTimer = 0;
+    this.congestionStrikes = 0;
+  }
+
+  downgradeQuality() {
+    const idx = QUALITY_LADDER.indexOf(this.qualityKey);
+    if (idx === -1 || idx >= QUALITY_LADDER.length - 1) return; // já no mínimo, ou preset fora da lista
+    const fromLabel = this.quality.label;
+    const next = QUALITY_LADDER[idx + 1];
+    this.setQuality(next);
+    this.emit('notice',
+      `Baixamos a transmissão pra ${QUALITY_PRESETS[next].label} — a rede não estava sustentando `
+      + `${fromLabel} de verdade (o FPS real estava bem abaixo do anunciado).`);
+    this.emit('qualitydowngraded', next);
+  }
 
   /* ================================================== estado =========== */
 
