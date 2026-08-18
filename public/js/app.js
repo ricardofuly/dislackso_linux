@@ -1237,6 +1237,63 @@ function showInvite(guild) {
   });
 }
 
+function showServerSettings(guild) {
+  const isOwner = !!(S.me && guild.ownerId === S.me.id);
+  let icon = guild.icon || '';
+
+  const render = () => {
+    const iconStyle = icon
+      ? `background-image:url('${esc(assetUrl(icon))}')`
+      : `background:var(--accent)`;
+
+    $('#modal-body').innerHTML = `
+      <label>Ícone do servidor</label>
+      <div class="upload-row">
+        <div class="upload-preview" id="srv-icon-preview" style="${iconStyle}">${icon ? '' : esc(initials(guild.name))}</div>
+        <div class="upload-actions">
+          <button type="button" id="srv-icon-upload" class="btn btn-primary"${isOwner ? '' : ' disabled'}>Alterar imagem</button>
+          ${icon ? `<button type="button" id="srv-icon-remove" class="btn btn-ghost"${isOwner ? '' : ' disabled'}>Remover</button>` : ''}
+        </div>
+      </div>
+      <label for="srv-name">Nome do servidor</label>
+      <input id="srv-name" type="text" maxlength="48" value="${esc(guild.name)}"${isOwner ? '' : ' disabled'}>
+      ${!isOwner ? '<p class="set-note">Somente o dono do servidor pode alterar essas configurações.</p>' : ''}`;
+
+    if (isOwner) {
+      $('#srv-icon-upload').onclick = async () => {
+        const dataUrl = await pickImage({ maxBytes: 8 * 1024 * 1024 });
+        if (!dataUrl) return;
+        try {
+          icon = await uploadImage(dataUrl, 'guild', S.me.id);
+          render();
+        } catch (err) { toast('Falha ao enviar: ' + err.message); }
+      };
+      const rmBtn = $('#srv-icon-remove');
+      if (rmBtn) rmBtn.onclick = () => { icon = ''; render(); };
+    }
+  };
+
+  openModal({
+    title: 'Configurações do servidor',
+    body: '',
+    okText: 'Salvar',
+    showOk: isOwner,
+    cancelText: isOwner ? 'Cancelar' : 'Fechar',
+    onOk: () => {
+      const name = $('#srv-name').value.trim();
+      if (!name) { toast('Dê um nome ao servidor.'); return false; }
+      const patch = {};
+      if (name !== guild.name) patch.name = name;
+      if (icon !== (guild.icon || '')) patch.icon = icon;
+      if (!Object.keys(patch).length) return;
+      ask('guild:update', { guildId: guild.id, ...patch })
+        .then(() => toast('Configurações do servidor atualizadas.'))
+        .catch((err) => toast(err.message));
+    },
+  });
+  render();
+}
+
 function onGuildMenu(e) {
   const act = e.target.dataset.act;
   const guild = activeGuild();
@@ -1251,16 +1308,7 @@ function onGuildMenu(e) {
       .catch((err) => toast(err.message));
   }
 
-  if (act === 'icon') {
-    pickImage({ maxBytes: 8 * 1024 * 1024 }).then(async (dataUrl) => {
-      if (!dataUrl) return;
-      try {
-        const url = await uploadImage(dataUrl, 'guild', S.me.id);
-        await ask('guild:update', { guildId: guild.id, icon: url });
-        toast('Ícone atualizado.');
-      } catch (err) { toast('Falhou: ' + err.message); }
-    });
-  }
+  if (act === 'settings') showServerSettings(guild);
 
   if (act === 'newtext' || act === 'newvoice') openModal({
     title: act === 'newtext' ? 'Criar canal de texto' : 'Criar sala de voz',
