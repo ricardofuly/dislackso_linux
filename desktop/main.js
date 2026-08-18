@@ -207,8 +207,12 @@ function installDisplayMediaHandler() {
       const source = sources.find((s) => s.id === chosenId);
       if (!source) return callback();
 
-      // 'loopback' captura o audio do sistema. So o Windows suporta.
-      callback(process.platform === 'win32'
+      // 'loopback' captura o audio do sistema, mas só funciona junto de uma
+      // tela inteira — pedir áudio ao capturar uma janela específica falha
+      // com "Could not start audio source" (limitação do WASAPI loopback,
+      // que não sabe isolar o som de uma janela só).
+      const isFullScreen = source.id.startsWith('screen:');
+      callback(process.platform === 'win32' && isFullScreen
         ? { video: source, audio: 'loopback' }
         : { video: source });
     } catch (err) {

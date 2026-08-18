@@ -1,3 +1,10 @@
+### Versão 3.3.2
+
+* **Correção:** compartilhar uma **janela específica** (não a tela inteira) no app desktop
+  dava erro "Could not start audio source" e a captura não iniciava. O app tentava sempre
+  pegar o áudio do sistema (loopback) junto do vídeo, mas o Windows só permite isso quando a
+  captura é de uma tela inteira — pra uma janela isolada, agora o app captura só o vídeo.
+
 ### Versão 3.3.1
 
 * **Correção:** quando o navegador/app tinha um `userId` salvo de uma instalação ou teste
