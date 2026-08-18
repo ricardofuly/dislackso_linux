@@ -39,6 +39,7 @@ async function loadPanel() {
   $('#cfg-hwaccel').checked = !!config.hardwareAcceleration;
   $('#cfg-transparency').checked = !!config.transparency;
   $('#cfg-server-url').value = config.serverUrlOverride || '';
+  $('#admin-key').value = config.adminKey || '';
 
   $('#cfg-hwaccel').onchange = (e) => window.desktopDev.setConfig({ hardwareAcceleration: e.target.checked });
   $('#cfg-transparency').onchange = (e) => window.desktopDev.setConfig({ transparency: e.target.checked });
@@ -50,6 +51,30 @@ async function loadPanel() {
   };
 
   $('#btn-open-datadir').onclick = () => window.desktopDev.openDataFolder();
+
+  $('#btn-save-admin-key').onclick = async () => {
+    await window.desktopDev.setConfig({ adminKey: $('#admin-key').value.trim() });
+    toastNote('#btn-save-admin-key', 'Salva.');
+  };
+
+  $('#btn-send-broadcast').onclick = async () => {
+    const message = $('#admin-message').value.trim();
+    if (!message) { $('#broadcast-msg').textContent = 'Escreva uma mensagem primeiro.'; $('#broadcast-msg').className = 'dev-error'; return; }
+    const forceFocus = $('#admin-force-focus').checked;
+    $('#btn-send-broadcast').disabled = true;
+    $('#broadcast-msg').textContent = 'Enviando…';
+    $('#broadcast-msg').className = 'dev-note';
+    const res = await window.desktopDev.broadcast(message, forceFocus);
+    $('#btn-send-broadcast').disabled = false;
+    if (res.ok) {
+      $('#broadcast-msg').textContent = `Enviado — ${res.delivered ?? '?'} conexão(ões) ativa(s) receberam agora.`;
+      $('#broadcast-msg').className = 'dev-ok';
+      $('#admin-message').value = '';
+    } else {
+      $('#broadcast-msg').textContent = res.error || 'Falhou.';
+      $('#broadcast-msg').className = 'dev-error';
+    }
+  };
 
   $('#btn-check-update').onclick = async () => {
     $('#update-status').textContent = 'Verificando…';

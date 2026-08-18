@@ -36,6 +36,8 @@ contextBridge.exposeInMainWorld('desktop', {
   restart: () => ipcRenderer.invoke('app:restart'),
   goHome: () => ipcRenderer.invoke('app:home'),
   openExternal: (url) => ipcRenderer.invoke('shell:openExternal', url),
+  /** Traz a janela pra frente — usado quando chega um aviso de admin forçando atenção. */
+  focusWindow: () => ipcRenderer.invoke('app:focus'),
 
   /**
    * Registra quem mostra o seletor de telas. Recebe a lista de fontes e

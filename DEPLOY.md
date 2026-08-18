@@ -56,6 +56,24 @@ Render também já redeploya sozinho a cada `git push` na branch conectada
 (comportamento padrão dele) — esse hook cobre especificamente o momento do
 Release, inclusive quando ele é criado sem um push novo.
 
+## Avisos pra todo mundo (painel de desenvolvedor)
+
+O painel de desenvolvedor do app desktop (`Ctrl+Alt+Shift+D`) tem uma aba
+**Comunicados** pra mandar um aviso — com popup, som e (opcional) forçando a
+janela de quem estiver com o app aberto a vir pra frente — pra todo mundo
+conectado na hora. Ele fala com o servidor por uma chave compartilhada, não
+por login (o painel de dev não tem sessão de usuário). Passo único:
+
+1. Escolha uma chave forte (qualquer string longa e aleatória serve; por
+   exemplo `wjmO_BSrhzXvkZTHOj5S5oyecPOVF2an` — troque por uma sua, essa é só
+   um exemplo).
+2. No Render: **dislackso → Environment → `ADMIN_KEY`** → cole a chave.
+3. No painel de desenvolvedor do app (na sua máquina): aba **Comunicados →
+   Chave de admin** → cole a **mesma** chave → Salvar.
+
+Sem `ADMIN_KEY` configurado no Render, o botão de enviar aviso responde com
+erro (por design — não é possível mandar comunicado sem essa chave definida).
+
 ## Limites importantes
 
 O plano gratuito do Supabase inclui 500 MB de banco, 50 mil usuários ativos

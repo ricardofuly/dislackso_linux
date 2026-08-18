@@ -1,3 +1,22 @@
+### Versão 3.5.0
+
+* **Correção:** o ícone do servidor (e os avatares de quem está numa sala de voz) ficavam
+  piscando toda vez que alguém falava. Causa: a lista de servidores e a lista de ocupantes
+  eram recriadas do zero a cada atualização de presença — e isso acontece várias vezes por
+  minuto numa conversa normal, porque dispara também quando alguém liga/desliga o indicador
+  de "falando". Agora essas listas só atualizam o que realmente mudou.
+* **Novo — assistir transmissão sob demanda, como no Discord:** quando alguém compartilha a
+  tela, os outros veem um card "AO VIVO" com uma prévia e um botão **Assistir transmissão**,
+  em vez do vídeo tocando sozinho pra todo mundo. Só quem clicar em assistir recebe o vídeo
+  de verdade — dá pra parar de assistir a qualquer momento, e quem está transmitindo pode
+  ocultar a prévia (no painel flutuante) pra economizar recurso enquanto ninguém pediu pra
+  ver ainda.
+* **Novo — comunicados do painel de desenvolvedor:** o painel de dev (`Ctrl+Alt+Shift+D`)
+  ganhou uma aba **Comunicados** pra mandar um aviso — com popup animado, som e (opcional)
+  forçando a janela de quem tiver o app aberto a vir pra frente — pra todo mundo conectado
+  na hora, em qualquer dispositivo. Precisa configurar uma chave (`ADMIN_KEY`) uma única vez
+  — ver [DEPLOY.md](DEPLOY.md#avisos-pra-todo-mundo-painel-de-desenvolvedor).
+
 ### Versão 3.4.0 — foco em qualidade de transmissão
 
 * **Qualidade adaptativa:** anunciar 1080p60 e entregar 4fps por causa de rede fraca é pior

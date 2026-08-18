@@ -22,6 +22,7 @@ const { autoUpdater } = require('electron-updater');
 
 const CONFIG_FILE = path.join(app.getPath('userData'), 'config.json');
 const DEFAULT_DEV_PASSWORD = 'dislackso-dev';
+const DEFAULT_SERVER_URL = 'https://dislackso.onrender.com'; // mesmo padrão de public/js/config.js
 
 /** Mesmo esquema de server/index.js (scrypt builtin, sem dependência nativa). */
 function hashSecret(value) {
@@ -46,6 +47,7 @@ const DEFAULTS = {
   lastHostTunnel: false,
   devPasswordHash: '',         // preenchido no primeiro boot, ver abaixo
   serverUrlOverride: '',       // definido pelo painel de desenvolvedor
+  adminKey: '',                 // pra mandar avisos — precisa bater com ADMIN_KEY no Render
 };
 
 /* ------------------------------------------------------------ config --- */
@@ -396,6 +398,35 @@ ipcMain.handle('dev:clearLocalData', async () => {
 
 ipcMain.handle('shell:openExternal', (_e, url) => {
   if (/^https?:\/\//i.test(String(url))) shell.openExternal(url);
+});
+
+/** Traz a janela principal pra frente — usado quando chega um aviso de admin com "forçar foco". */
+ipcMain.handle('app:focus', () => {
+  if (!win || win.isDestroyed()) return;
+  if (win.isMinimized()) win.restore();
+  win.show();
+  win.focus();
+  if (app.dock) app.dock.bounce('informational');
+});
+
+/** Manda o aviso pra todo mundo conectado, via o servidor (o painel de dev não tem sessão de usuário). */
+ipcMain.handle('dev:broadcast', async (_e, { message, forceFocus } = {}) => {
+  requireDevAuth();
+  const cfg = readConfig();
+  if (!cfg.adminKey) return { ok: false, error: 'Defina a chave de admin primeiro (precisa bater com ADMIN_KEY no Render).' };
+  const base = cfg.serverUrlOverride || DEFAULT_SERVER_URL;
+  try {
+    const res = await fetch(`${base}/api/admin/broadcast`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ key: cfg.adminKey, message, forceFocus: !!forceFocus }),
+    });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok) return { ok: false, error: json.error || `HTTP ${res.status}` };
+    return { ok: true, delivered: json.delivered };
+  } catch (err) {
+    return { ok: false, error: err.message };
+  }
 });
 
 ipcMain.handle('update:state', () => ({

@@ -104,6 +104,7 @@
           <span class="hud-label">Você está transmitindo</span>
           <button id="hud-mic" class="hud-btn" title="Microfone (M)"><span class="i" id="hud-ico-mic"></span></button>
           <button id="hud-pen" class="hud-btn" title="Rabiscar na própria tela (P)"><span data-icon="pen" data-size="16"></span></button>
+          <button id="hud-preview" class="hud-btn" title="Ocultar prévia de quem não está assistindo (economiza recurso)"><span class="i" id="hud-ico-preview"></span></button>
           <button id="hud-stop" class="hud-btn hud-danger" title="Parar de transmitir"><span data-icon="screenOff" data-size="16"></span></button>
         </div>
       </div>
@@ -188,6 +189,16 @@
 </div>
 
 <div id="toast" class="toast hidden"></div>
+
+<!-- aviso de administrador -->
+<div id="announce" class="announce hidden">
+  <div class="announce-card">
+    <div class="announce-icon"><span data-icon="megaphone" data-size="26"></span></div>
+    <h2>Aviso importante</h2>
+    <p id="announce-text"></p>
+    <button id="announce-ok" class="btn btn-primary">Ok, entendi</button>
+  </div>
+</div>
 
 <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
 <script src="js/config.js"></script>

@@ -195,6 +195,20 @@ class Peer {
     const pc = this.pc;
     if (pc.signalingState === 'closed') return;
     try {
+      // Pedido de outro participante pra eu (que estou compartilhando)
+      // começar/parar de mandar a tela só pra ele. Não é SDP nem ICE, então
+      // resolve aqui e sai — reaproveita o mesmo canal de sinalização em
+      // vez de inventar um evento de socket novo.
+      if (data.watch) {
+        const stream = this.engine.local.screenStream;
+        if (stream) this.addScreen(stream);
+        return;
+      }
+      if (data.unwatch) {
+        this.removeScreen();
+        return;
+      }
+
       if (data.description) {
         const desc = data.description;
         const collision = desc.type === 'offer' && (this.makingOffer || pc.signalingState !== 'stable');
@@ -241,19 +255,13 @@ class Peer {
   };
 
   publishLocalTracks() {
-    const { micStream, screenStream } = this.engine.local;
-
+    const { micStream } = this.engine.local;
+    // A tela NÃO entra aqui — ela só é enviada pra quem pedir pra assistir
+    // (ver watch()/unwatch() e o tratamento de 'watch'/'unwatch' em
+    // processSignal). Todo mundo continua recebendo o microfone normalmente.
     if (micStream) {
       for (const track of micStream.getAudioTracks()) {
         this.senders.mic = this.pc.addTrack(track, micStream);
-      }
-    }
-    if (screenStream) {
-      for (const track of screenStream.getVideoTracks()) {
-        this.senders.screenVideo = this.pc.addTrack(track, screenStream);
-      }
-      for (const track of screenStream.getAudioTracks()) {
-        this.senders.screenAudio = this.pc.addTrack(track, screenStream);
       }
     }
     this.retuneSenders();
@@ -272,6 +280,7 @@ class Peer {
   }
 
   addScreen(stream) {
+    if (this.senders.screenVideo) return; // já está assistindo, nada a fazer
     for (const track of stream.getVideoTracks()) {
       this.senders.screenVideo = this.pc.addTrack(track, stream);
     }
@@ -549,6 +558,7 @@ class VoiceEngine {
   stop() {
     this.inRoom = false;
     this.stopCongestionWatch();
+    this.stopPreviewLoop();
     for (const peer of this.peers.values()) peer.close();
     this.peers.clear();
     this.pending.clear();
@@ -692,18 +702,22 @@ class VoiceEngine {
         : 'Tela sem áudio. Marque "Compartilhar áudio da guia/sistema" na janela de seleção.');
     }
 
+    // A tela não vai automaticamente pra ninguém — cada participante pede
+    // pra assistir quando quiser (ver Peer#addScreen/removeScreen e
+    // watchPeer/unwatchPeer). Só a prévia (imagem estática, leve) sai sozinha.
     this.local.screenStream = captured;
-    for (const peer of this.peers.values()) peer.addScreen(captured);
 
     this.publishState();
     this.emit('localchange');
     this.emit('screenstart');
     this.watchCongestion();
+    this.startPreviewLoop();
   }
 
   stopScreen() {
     const stream = this.local.screenStream;
     if (!stream) return;
+    this.stopPreviewLoop();
     this.stopCongestionWatch();
     for (const peer of this.peers.values()) peer.removeScreen();
     for (const t of stream.getTracks()) t.stop();
@@ -714,6 +728,68 @@ class VoiceEngine {
   }
 
   isSharing() { return !!this.local.screenStream; }
+
+  /** Pede pra quem está transmitindo começar a me mandar o vídeo de verdade. */
+  watchPeer(sid) {
+    const peer = this.peers.get(sid);
+    if (peer) peer.signal({ watch: true });
+  }
+
+  /** Sai de assistir — a pessoa para de gastar banda me mandando esse vídeo. */
+  unwatchPeer(sid) {
+    const peer = this.peers.get(sid);
+    if (peer) peer.signal({ unwatch: true });
+  }
+
+  /* ------------------------------------------------------- prévia leve -- */
+
+  /**
+   * Enquanto eu transmito, manda uma prévia estática (imagem pequena, não
+   * vídeo) pra sala de vez em quando — é o que quem ainda não pediu pra
+   * assistir vê no card, sem custar a banda do vídeo de verdade pra
+   * ninguém. Dá pra desligar (setPreviewHidden) pra economizar ainda mais.
+   */
+  startPreviewLoop() {
+    this.stopPreviewLoop();
+    this.previewHidden = this.previewHidden || false;
+    const track = this.local.screenStream && this.local.screenStream.getVideoTracks()[0];
+    if (!track || typeof ImageCapture === 'undefined') return;
+
+    let capture;
+    try { capture = new ImageCapture(track); } catch { return; }
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+
+    const tick = async () => {
+      if (this.previewHidden || !this.socket || !this.local.screenStream) return;
+      try {
+        const bitmap = await capture.grabFrame();
+        const scale = Math.min(1, 320 / bitmap.width);
+        canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+        canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+        ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+        bitmap.close && bitmap.close();
+        this.socket.emit('screen:preview', { dataUrl: canvas.toDataURL('image/jpeg', 0.45) });
+      } catch { /* um quadro perdido não é problema, tenta de novo depois */ }
+    };
+    tick();
+    this.previewTimer = setInterval(tick, 6000);
+  }
+
+  stopPreviewLoop() {
+    clearInterval(this.previewTimer);
+    this.previewTimer = 0;
+  }
+
+  /** Liga/desliga o envio da prévia — pra quem está transmitindo poupar recurso. */
+  setPreviewHidden(hidden) {
+    this.previewHidden = !!hidden;
+    if (this.previewHidden) {
+      this.socket && this.socket.emit('screen:preview', { dataUrl: null });
+    } else if (this.local.screenStream && !this.previewTimer) {
+      this.startPreviewLoop();
+    }
+  }
 
   /* ---------------------------------------------- qualidade adaptativa -- */
 
