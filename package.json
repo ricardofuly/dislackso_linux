@@ -51,13 +51,13 @@
     "vite": "^8.2.1"
   },
   "engines": {
-    "node": ">=18"
+    "node": ">=20.19"
   },
   "build": {
     "appId": "com.dislackso.desktop",
     "productName": "DiSlackso",
     "directories": {
-      "output": "dist",
+      "output": "release",
       "buildResources": "build"
     },
     "publish": [
@@ -70,7 +70,7 @@
     "files": [
       "desktop/**/*",
       "server/**/*",
-      "public/**/*",
+      "dist/desktop/**/*",
       "package.json"
     ],
     "win": {

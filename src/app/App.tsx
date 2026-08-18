@@ -45,11 +45,15 @@ export function App() {
       <GlassFilters />
 
       {/*
-        Um filho só, trocado pela `key`. Com `mode="wait"` o AnimatePresence
-        espera o anterior sair antes de montar o próximo — e para isso ele
-        precisa enxergar UM elemento, não dois blocos condicionais lado a lado.
+        Um filho só, trocado pela `key`.
+
+        Sem `mode="wait"` de propósito: nesse modo o AnimatePresence só monta o
+        próximo depois que o anterior termina de sair, e a tela de entrada tem
+        animações infinitas no fundo — a saída nunca "terminava", e entrar na
+        conta deixava o app parado na tela de login mesmo com a sessão já
+        aberta. Em sobreposição, a entrada some por cima enquanto o app aparece.
       */}
-      <AnimatePresence mode="wait" initial={false}>
+      <AnimatePresence initial={false}>
         {phase === 'gate' ? (
           <motion.div
             key="gate"

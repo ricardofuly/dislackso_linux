@@ -29,10 +29,8 @@ const { registerRoutes } = require('./http/routes');
 const { createPresence } = require('./socket/presence');
 const { attachSocket } = require('./socket');
 
-/** A interface compilada. O build web é o que o Express serve. */
+/** A interface compilada. É o que o Express serve. */
 const WEB_DIR = path.join(__dirname, '..', 'dist', 'web');
-/** Enquanto ninguém rodou `npm run build`, servimos a pasta antiga. */
-const LEGACY_DIR = path.join(__dirname, '..', 'public');
 
 function createServer(options = {}) {
   const port = Number(options.port || process.env.PORT || 3000);
@@ -61,8 +59,16 @@ function createServer(options = {}) {
   app.use(express.json({ limit: '20mb' }));
   app.use('/uploads', express.static(uploadDir, { maxAge: '7d', immutable: true }));
 
-  const staticDir = fs.existsSync(WEB_DIR) ? WEB_DIR : LEGACY_DIR;
-  app.use(express.static(staticDir, { extensions: ['html'] }));
+  if (fs.existsSync(WEB_DIR)) {
+    app.use(express.static(WEB_DIR, { extensions: ['html'] }));
+  } else {
+    // Sem o build, a API funciona e a raiz explica o que fazer — melhor que
+    // um 404 seco, que parece o servidor estar fora do ar.
+    console.warn('[http] dist/web não existe — rode "npm run build". A API continua no ar.');
+    app.get('/', (_req, res) => {
+      res.status(503).type('text/plain').send('Interface não compilada. Rode "npm run build".');
+    });
+  }
 
   /* ----------------------------------------------------------- listener -- */
 

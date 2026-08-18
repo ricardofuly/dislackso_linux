@@ -15,3 +15,6 @@ dev-app-update.yml
 
 # backup local do v3 durante o refactor 4.0
 .backup/
+
+# saida do electron-builder
+release/

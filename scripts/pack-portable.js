@@ -88,9 +88,17 @@ copyDir(ELECTRON_DIST, OUT);
 fs.rmSync(path.join(OUT, 'resources', 'default_app.asar'), { force: true });
 
 console.log('Copiando o aplicativo…');
-for (const dir of ['desktop', 'server', 'public']) {
+for (const dir of ['desktop', 'server']) {
   copyDir(path.join(ROOT, dir), path.join(APP, dir));
 }
+
+// A interface compilada para o desktop (npm run build:desktop).
+const webBundle = path.join(ROOT, 'dist', 'desktop');
+if (!fs.existsSync(webBundle)) {
+  console.error('dist/desktop não existe. Rode "npm run build:desktop" antes.');
+  process.exit(1);
+}
+copyDir(webBundle, path.join(APP, 'dist', 'desktop'));
 
 // package.json enxuto: sem devDependencies nem config de build.
 fs.mkdirSync(APP, { recursive: true });

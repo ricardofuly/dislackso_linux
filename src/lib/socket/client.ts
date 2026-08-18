@@ -6,9 +6,19 @@ export type AppSocket = Socket<ServerEvents, ClientEvents>;
 
 let socket: AppSocket | null = null;
 
-/** Cria (uma vez) a conexão com o servidor. */
+/**
+ * Cria (uma vez) a conexão com o servidor.
+ *
+ * `tryAllTransports` é o que importa aqui: sem ele, o socket.io tenta só o
+ * primeiro transporte e desiste. Em rede corporativa ou de escola, onde o
+ * WebSocket costuma estar bloqueado, o app ficaria preso na tela de entrada
+ * sem explicação — com ele, cai para long-polling e funciona.
+ */
 export function connectSocket(): AppSocket {
-  socket ??= io(serverUrl(), { transports: ['websocket', 'polling'] });
+  socket ??= io(serverUrl(), {
+    transports: ['websocket', 'polling'],
+    tryAllTransports: true,
+  });
   return socket;
 }
 
