@@ -66,9 +66,13 @@
     },
     "linux": {
       "target": [
-        "AppImage"
+        "AppImage",
+        "rpm"
       ],
-      "category": "Network"
+      "category": "Network",
+      "synopsis": "Servidores privados, compartilhamento de tela em alta resolução e anotação ao vivo",
+      "artifactName": "${productName}-${version}.${ext}",
+      "maintainer": "Ricardo Fuly lricardofs@gmail.com"
     },
     "mac": {
       "target": [
