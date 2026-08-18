@@ -1,5 +1,6 @@
 import { clamp } from '@/lib/format';
 import { settings, useSettings } from '@/stores/settings';
+import { createRNNoiseNode } from './rnnoise';
 
 /** Acima disto (0..255, média do espectro) consideramos que a pessoa está falando. */
 const SPEAKING_THRESHOLD = 12;
@@ -14,16 +15,17 @@ interface MicCallbacks {
 }
 
 /**
- * O microfone passa por um grafo de Web Audio: fonte → ganho → destino.
+ * O microfone passa por um grafo de Web Audio: fonte → RNNoise → ganho → destino.
  *
- * Não é firula. O grafo é o que permite três coisas que a faixa crua não dá:
- * volume de entrada ajustável, medidor de voz (o "está falando" que acende o
- * avatar), e trocar de aparelho com um `replaceTrack` — sem renegociar SDP
- * com todo mundo da sala.
+ * Não é firula. O grafo é o que permite quatro coisas que a faixa crua não dá:
+ * supressão de ruído com IA (RNNoise), volume de entrada ajustável, medidor
+ * de voz (o "está falando" que acende o avatar), e trocar de aparelho com um
+ * `replaceTrack` — sem renegociar SDP com todo mundo da sala.
  */
 export class MicGraph {
   private raw: MediaStream | null = null;
   private ctx: AudioContext | null = null;
+  private rnnoiseNode: AudioWorkletNode | null = null;
   private gain: GainNode | null = null;
   private analyser: AnalyserNode | null = null;
   private buffer: Uint8Array<ArrayBuffer> | null = null;
@@ -51,7 +53,7 @@ export class MicGraph {
       audio: {
         channelCount: 1,
         echoCancellation: s.echoCancellation,
-        noiseSuppression: s.noiseSuppression,
+        noiseSuppression: s.rnnoise ? false : s.noiseSuppression,
         autoGainControl: s.autoGainControl,
         ...(s.micId ? { deviceId: { exact: s.micId } } : {}),
       },
@@ -76,8 +78,14 @@ export class MicGraph {
     return this.buildGraph(raw, clamp(Number(s.micGain) || 1, 0, 3));
   }
 
-  private buildGraph(raw: MediaStream, gainValue: number): MediaStreamTrack {
-    const ctx = new AudioContext({ sampleRate: 48000 });
+  private async buildGraph(raw: MediaStream, gainValue: number): Promise<MediaStreamTrack> {
+    let ctx: AudioContext;
+    try {
+      ctx = new AudioContext({ sampleRate: 48000 });
+    } catch {
+      ctx = new AudioContext();
+    }
+
     const source = ctx.createMediaStreamSource(raw);
     const gain = ctx.createGain();
     gain.gain.value = gainValue;
@@ -87,11 +95,24 @@ export class MicGraph {
     analyser.smoothingTimeConstant = 0.4;
 
     const destination = ctx.createMediaStreamDestination();
-    source.connect(gain);
+
+    let rnnoiseNode: AudioWorkletNode | null = null;
+    if (settings().rnnoise) {
+      rnnoiseNode = await createRNNoiseNode(ctx);
+    }
+
+    if (rnnoiseNode) {
+      source.connect(rnnoiseNode);
+      rnnoiseNode.connect(gain);
+    } else {
+      source.connect(gain);
+    }
+
     gain.connect(destination);
     gain.connect(analyser);
 
     this.ctx = ctx;
+    this.rnnoiseNode = rnnoiseNode;
     this.gain = gain;
     this.analyser = analyser;
     this.buffer = new Uint8Array(analyser.frequencyBinCount);
@@ -171,6 +192,11 @@ export class MicGraph {
   /** Desmonta o grafo de áudio e solta o aparelho, sem tocar na escolha do usuário. */
   private teardownGraph(): void {
     cancelAnimationFrame(this.raf);
+    if (this.rnnoiseNode) {
+      try { this.rnnoiseNode.port.postMessage({ destroy: true }); } catch {}
+      try { this.rnnoiseNode.disconnect(); } catch {}
+      this.rnnoiseNode = null;
+    }
     for (const track of this.raw?.getTracks() ?? []) track.stop();
     try {
       void this.ctx?.close();

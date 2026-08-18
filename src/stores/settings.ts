@@ -35,6 +35,7 @@ export interface SettingsValues {
   micId: string;
   speakerId: string;
   micGain: number;
+  rnnoise: boolean;
   echoCancellation: boolean;
   noiseSuppression: boolean;
   autoGainControl: boolean;
@@ -59,7 +60,7 @@ export const DEFAULT_SETTINGS: SettingsValues = {
   theme: 'escuro', accent: '#5865f2', radius: 1, glass: 0.74,
   motion: 'on', motionSpeed: 1, gpu: 'on',
   quality: '1080p60', contentHint: 'motion', autoFocus: true, selfPreview: true, shareSystemAudio: true,
-  micId: '', speakerId: '', micGain: 1,
+  micId: '', speakerId: '', micGain: 1, rnnoise: true,
   echoCancellation: true, noiseSuppression: true, autoGainControl: true,
   micMode: 'voz', duckVoiceOnShare: true,
   muteKey: 'KeyM', screenKey: 'KeyS', pttKey: 'Space', annotKey: 'KeyP',
