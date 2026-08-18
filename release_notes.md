@@ -1,3 +1,9 @@
+### Versão 3.5.2
+
+* **Novo — ícone do app:** o DiSlackso ganhou um ícone novo (o "D" em balão de fala, gradiente
+  azul/roxo), substituindo o desenho antigo em todo lugar — executável, instalador, atalho,
+  favicon da aba do navegador e logo da tela de login.
+
 ### Versão 3.5.1
 
 * **Novo — configurações do servidor:** o menu do servidor ganhou um botão **Configurações
