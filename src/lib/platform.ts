@@ -6,11 +6,13 @@
  * continua compatível com este arquivo.
  */
 
+/** Espelha exatamente o payload que `desktop/main.js` manda por `screen:pick`. */
 export interface ScreenSource {
   id: string;
   name: string;
   thumbnail: string;
-  isScreen: boolean;
+  type: 'screen' | 'window';
+  icon: string | null;
 }
 
 export interface ScreenChoice {

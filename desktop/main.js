@@ -259,12 +259,12 @@ function installDisplayMediaHandler() {
         }));
 
         const picked = await askRendererToPick(payload);
-        if (!picked || !picked.id) return callback();
+        if (!picked || !picked.id) return callback(null);
         source = sources.find((s) => s.id === picked.id);
         wantAudio = picked.audio !== false;
         lastSourceId = picked.id;
       }
-      if (!source) return callback();
+      if (!source) return callback(null);
 
       // 'loopback' captura o audio do sistema, mas só funciona junto de uma
       // tela inteira — pedir áudio ao capturar uma janela específica falha
@@ -276,7 +276,7 @@ function installDisplayMediaHandler() {
       callback(includeAudio ? { video: source, audio: 'loopback' } : { video: source });
     } catch (err) {
       console.error('[captura]', err);
-      callback();
+      try { callback(null); } catch {}
     }
   }, { useSystemPicker: false });
 }

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { motion } from 'motion/react';
 import { Eye, Volume2, Zap } from 'lucide-react';
 import { Avatar } from '@/components/ui/Avatar';
@@ -28,6 +28,11 @@ interface TileProps {
  */
 export function Tile({ entry, focused, clickable, onClick }: TileProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
+  // Referência estável: sem isto, cada render de Tile cria uma função nova, o
+  // useEffect de AnnotationLayer (que depende dela) reexecuta a cada bump de
+  // tick, e o cleanup dele desliga o modo caneta assim que ele é ligado — a
+  // caneta "não pega" porque se autodesativa no instante seguinte.
+  const getVideo = useCallback(() => videoRef.current, []);
   const watching = useRoom((s) => s.watching.has(entry.id));
   const preview = useRoom((s) => s.previews.get(entry.id));
   const [needsGesture, setNeedsGesture] = useState(false);
@@ -83,7 +88,7 @@ export function Tile({ entry, focused, clickable, onClick }: TileProps) {
       {pending && <WatchPrompt preview={preview} onWatch={() => watchPeer(entry.id)} />}
 
       {showVideo && (
-        <AnnotationLayer targetId={entry.id} video={() => videoRef.current} />
+        <AnnotationLayer targetId={entry.id} video={getVideo} />
       )}
 
       {(entry.sharing || entry.intendsScreen) && (
@@ -108,7 +113,7 @@ export function Tile({ entry, focused, clickable, onClick }: TileProps) {
         </Button>
       )}
 
-      <TileBar entry={entry} focused={focused} showVideo={showVideo} video={() => videoRef.current} />
+      <TileBar entry={entry} focused={focused} showVideo={showVideo} video={getVideo} />
     </motion.div>
   );
 }

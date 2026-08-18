@@ -99,8 +99,9 @@ export function VoiceSection() {
 
       {(
         [
+          ['rnnoise', 'Supressão de ruído RNNoise (IA)', 'Reduz ruídos de fundo (teclado, cliques, ventilador) com rede neural em tempo real.'],
           ['echoCancellation', 'Cancelamento de eco', 'Evita que o som da caixa volte pelo microfone.'],
-          ['noiseSuppression', 'Redução de ruído', 'Corta ventilador, teclado e chiado.'],
+          ['noiseSuppression', 'Redução de ruído padrão', 'Corta ventilador, teclado e chiado básico do navegador.'],
           ['autoGainControl', 'Volume automático', 'O navegador equaliza o volume da sua voz.'],
         ] as const
       ).map(([key, title, desc]) => (
