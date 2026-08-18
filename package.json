@@ -1,6 +1,6 @@
 {
   "name": "dislackso",
-  "version": "3.5.3",
+  "version": "4.0.1",
   "private": true,
   "description": "Servidores privados, compartilhamento de tela em alta resolucao e anotacoes ao vivo",
   "author": "Spike",
@@ -11,31 +11,53 @@
   },
   "main": "desktop/main.js",
   "scripts": {
+    "dev": "vite",
+    "server": "node server.js",
     "start": "node server.js",
-    "desktop": "electron .",
-    "build": "npm run icon && node scripts/prep-build.js && electron-builder --publish never",
-    "portable": "npm run icon && node scripts/pack-portable.js",
+    "build": "vite build --mode web",
+    "build:desktop": "vite build --mode desktop",
+    "desktop": "npm run build:desktop && electron .",
+    "typecheck": "tsc --noEmit",
+    "dist": "npm run icon && npm run build:desktop && node scripts/prep-build.js && electron-builder --publish never",
+    "portable": "npm run icon && npm run build:desktop && node scripts/pack-portable.js",
     "cert": "node scripts/gen-cert.js",
     "icon": "node scripts/gen-icon.js"
   },
   "dependencies": {
+    "clsx": "^2.1.1",
     "electron-updater": "^6.8.9",
     "express": "^4.21.2",
+    "lucide-react": "^1.32.0",
+    "motion": "^13.1.0",
+    "radix-ui": "^1.6.7",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
     "selfsigned": "^2.4.1",
-    "socket.io": "^4.8.1"
+    "socket.io": "^4.8.1",
+    "socket.io-client": "^4.8.3",
+    "tailwind-merge": "^3.6.0",
+    "zustand": "^5.0.15"
   },
   "devDependencies": {
+    "@tailwindcss/vite": "^4.3.3",
+    "@types/node": "^26.2.0",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.4",
+    "@vitejs/plugin-react": "^6.0.5",
     "electron": "^33.2.1",
-    "electron-builder": "^25.1.8"
+    "electron-builder": "^25.1.8",
+    "tailwindcss": "^4.3.3",
+    "typescript": "^7.0.2",
+    "vite": "^8.2.1"
   },
   "engines": {
-    "node": ">=18"
+    "node": ">=20.19"
   },
   "build": {
     "appId": "com.dislackso.desktop",
     "productName": "DiSlackso",
     "directories": {
-      "output": "dist",
+      "output": "release",
       "buildResources": "build"
     },
     "publish": [
@@ -48,7 +70,7 @@
     "files": [
       "desktop/**/*",
       "server/**/*",
-      "public/**/*",
+      "dist/desktop/**/*",
       "package.json"
     ],
     "win": {
