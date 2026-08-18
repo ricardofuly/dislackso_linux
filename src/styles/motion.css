@@ -83,3 +83,65 @@
     animation-duration: 1ms !important;
   }
 }
+
+/* ==========================================================================
+   Entradas e saídas das camadas flutuantes.
+   Ficam em CSS (e não no Motion) porque o Radix já expõe `data-state`, e
+   deixar a animação junto do estado evita ter de montar/desmontar à mão.
+   ========================================================================== */
+
+@keyframes veil-in {
+  from {
+    opacity: 0;
+    backdrop-filter: blur(0px);
+  }
+  to {
+    opacity: 1;
+    backdrop-filter: blur(6px);
+  }
+}
+
+@keyframes lift-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes lift-out {
+  to {
+    opacity: 0;
+    transform: translateY(6px) scale(0.98);
+  }
+}
+
+@keyframes drop-in {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@utility anim-veil {
+  animation: veil-in var(--duration-med) var(--ease-out-soft) both;
+}
+
+@utility anim-lift {
+  animation: lift-in var(--duration-med) var(--ease-out-soft) both;
+}
+
+@utility anim-lift-out {
+  animation: lift-out var(--duration-fast) var(--ease-glass) both;
+}
+
+@utility anim-drop {
+  animation: drop-in var(--duration-fast) var(--ease-out-soft) both;
+}

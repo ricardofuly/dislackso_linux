@@ -1,6 +1,6 @@
 {
   "name": "dislackso",
-  "version": "3.5.3",
+  "version": "4.0.0",
   "private": true,
   "description": "Servidores privados, compartilhamento de tela em alta resolucao e anotacoes ao vivo",
   "author": "Spike",
@@ -11,10 +11,15 @@
   },
   "main": "desktop/main.js",
   "scripts": {
+    "dev": "vite",
+    "server": "node server.js",
     "start": "node server.js",
-    "desktop": "electron .",
-    "build": "npm run icon && node scripts/prep-build.js && electron-builder --publish never",
-    "portable": "npm run icon && node scripts/pack-portable.js",
+    "build": "vite build --mode web",
+    "build:desktop": "vite build --mode desktop",
+    "desktop": "npm run build:desktop && electron .",
+    "typecheck": "tsc --noEmit",
+    "dist": "npm run icon && npm run build:desktop && node scripts/prep-build.js && electron-builder --publish never",
+    "portable": "npm run icon && npm run build:desktop && node scripts/pack-portable.js",
     "cert": "node scripts/gen-cert.js",
     "icon": "node scripts/gen-icon.js"
   },

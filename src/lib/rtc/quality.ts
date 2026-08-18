@@ -33,3 +33,48 @@ export function nextLowerQuality(key: string): string | null {
   if (i === -1 || i >= QUALITY_LADDER.length - 1) return null;
   return QUALITY_LADDER[i + 1] ?? null;
 }
+
+interface QualityDeps {
+  /** Reaplicar a qualidade nos encoders e na captura em andamento. */
+  onApply(preset: QualityPreset): void;
+  /** A rede não sustentou; contamos o que houve e para onde descemos. */
+  onDowngrade(message: string, key: string): void;
+}
+
+/**
+ * A qualidade da transmissão e as regras de quando ela desce sozinha.
+ *
+ * Fica separada do motor porque é uma decisão de política, não de mídia: o
+ * motor sabe *como* aplicar um preset, esta classe sabe *qual* preset vale
+ * agora e por quê.
+ */
+export class QualityControl {
+  key = DEFAULT_QUALITY_KEY;
+  preset = presetFor(DEFAULT_QUALITY_KEY);
+  contentHint = 'motion';
+
+  constructor(private readonly deps: QualityDeps) {}
+
+  set(key: string): void {
+    this.key = key;
+    this.preset = presetFor(key);
+    this.deps.onApply(this.preset);
+  }
+
+  setContentHint(hint: string): void {
+    this.contentHint = hint;
+  }
+
+  /** Desce um degrau, se houver para onde descer. */
+  downgrade(): void {
+    const next = nextLowerQuality(this.key);
+    if (!next) return; // já no degrau mais leve
+    const from = this.preset.label;
+    this.set(next);
+    this.deps.onDowngrade(
+      `Baixamos a transmissão pra ${presetFor(next).label} — a rede não estava sustentando `
+        + `${from} de verdade (o FPS real estava bem abaixo do anunciado).`,
+      next,
+    );
+  }
+}

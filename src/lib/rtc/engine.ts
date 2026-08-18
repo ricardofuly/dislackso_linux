@@ -1,27 +1,15 @@
 import { Emitter } from '@/lib/emitter';
+import type { VoiceEvents } from './events';
 import { feedback } from '@/lib/feedback';
 import { tell } from '@/lib/socket/client';
 import { settings } from '@/stores/settings';
 import { MicGraph } from './mic';
 import { PeerMesh } from './mesh';
 import type { Peer } from './peer';
-import { DEFAULT_QUALITY_KEY, nextLowerQuality, presetFor, type QualityPreset } from './quality';
+import { QualityControl } from './quality';
 import { ScreenSharing } from './sharing';
 import { buildReport } from './stats';
 
-export interface VoiceEvents {
-  /** Alguém entrou ou saiu — a lista de participantes mudou. */
-  peerschange: void;
-  /** Um participante mudou de estado (mídia, conexão). */
-  peerchange: Peer;
-  /** Mudou algo do lado de cá (microfone, tela, qualidade). */
-  localchange: void;
-  notice: string;
-  screenstart: void;
-  screenstop: void;
-  qualitydowngraded: string;
-  level: number;
-}
 
 /**
  * O motor de mídia da sala de voz.
@@ -45,9 +33,17 @@ export class VoiceEngine extends Emitter<VoiceEvents> {
   private iceServers: RTCIceServer[] = [];
   private inRoom = false;
 
-  qualityKey = DEFAULT_QUALITY_KEY;
-  quality: QualityPreset = presetFor(DEFAULT_QUALITY_KEY);
-  contentHint = 'motion';
+  readonly quality = new QualityControl({
+    onApply: (preset) => {
+      this.mesh.retuneAll();
+      this.screen.applyQuality(preset);
+      this.emit('localchange', undefined);
+    },
+    onDowngrade: (message, key) => {
+      this.emit('notice', message);
+      this.emit('qualitydowngraded', key);
+    },
+  });
 
   readonly mic = new MicGraph({
     onLevel: (level) => this.emit('level', level),
@@ -58,7 +54,7 @@ export class VoiceEngine extends Emitter<VoiceEvents> {
   readonly mesh = new PeerMesh({
     sid: () => this.sid,
     iceServers: () => this.iceServers,
-    quality: () => this.quality,
+    quality: () => this.quality.preset,
     localScreen: () => this.screen.stream,
     localMic: () => this.mic.stream,
     onPeersChange: () => this.emit('peerschange', undefined),
@@ -68,8 +64,8 @@ export class VoiceEngine extends Emitter<VoiceEvents> {
 
   readonly screen = new ScreenSharing({
     mesh: this.mesh,
-    quality: () => this.quality,
-    contentHint: () => this.contentHint,
+    quality: () => this.quality.preset,
+    contentHint: () => this.quality.contentHint,
     onNotice: (message) => this.emit('notice', message),
     onChange: () => this.emit('localchange', undefined),
     onStart: () => {
@@ -80,7 +76,7 @@ export class VoiceEngine extends Emitter<VoiceEvents> {
       this.announce();
       this.emit('screenstop', undefined);
     },
-    onCongested: () => this.downgradeQuality(),
+    onCongested: () => this.quality.downgrade(),
   });
 
   /** O meu id de socket nesta sessão — é assim que os outros me identificam. */
@@ -99,33 +95,14 @@ export class VoiceEngine extends Emitter<VoiceEvents> {
     this.emit('localchange', undefined);
   }
 
-  /* ------------------------------------------------------- qualidade --- */
-
   setQuality(key: string): void {
-    this.qualityKey = key;
-    this.quality = presetFor(key);
-    this.mesh.retuneAll();
-    this.screen.applyQuality(this.quality);
-    this.emit('localchange', undefined);
+    this.quality.set(key);
   }
 
   setContentHint(hint: string): void {
-    this.contentHint = hint;
+    this.quality.setContentHint(hint);
     this.screen.applyContentHint(hint);
     this.emit('localchange', undefined);
-  }
-
-  private downgradeQuality(): void {
-    const next = nextLowerQuality(this.qualityKey);
-    if (!next) return; // já no degrau mais leve
-    const from = this.quality.label;
-    this.setQuality(next);
-    this.emit(
-      'notice',
-      `Baixamos a transmissão pra ${presetFor(next).label} — a rede não estava sustentando `
-        + `${from} de verdade (o FPS real estava bem abaixo do anunciado).`,
-    );
-    this.emit('qualitydowngraded', next);
   }
 
   /* ------------------------------------------------------- microfone --- */
@@ -210,8 +187,8 @@ export class VoiceEngine extends Emitter<VoiceEvents> {
 
   report(): Promise<string> {
     return buildReport({
-      quality: this.quality,
-      contentHint: this.contentHint,
+      quality: this.quality.preset,
+      contentHint: this.quality.contentHint,
       sharing: this.screen.active,
       peers: [...this.mesh.peers.values()],
     });

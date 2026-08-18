@@ -24,23 +24,38 @@ export type UpdateStatus =
   | 'available'
   | 'downloading'
   | 'ready'
-  | 'none'
-  | 'error'
-  | 'unsupported';
+  | 'current'
+  | 'error';
+
+export interface ReleaseInfo {
+  version: string;
+  releaseName: string | null;
+  releaseDate: string | null;
+  /** Notas da versão, já sem HTML. */
+  notes: string;
+}
 
 export interface UpdateState {
   status: UpdateStatus;
-  info?: { version?: string; releaseNotes?: string; releaseDate?: string } | null;
-  progress?: { percent: number; transferred: number; total: number; speed: number } | null;
-  error?: string | null;
-  capability?: { canDownload: boolean; reason?: string } | null;
+  info: ReleaseInfo | null;
+  progress: { percent: number; transferred: number; total: number; speed: number } | null;
+  error: string | null;
+  /** `false` quando esta instalação não pode se atualizar sozinha. */
+  can: boolean;
+  /** `'dev'` (rodando do código-fonte) ou `'portable'`. */
+  reason: string | null;
+  /** A versão instalada agora. */
+  current: string;
 }
 
 export interface DesktopInfo {
   version: string;
+  electron: string;
+  chrome: string;
+  node: string;
   platform: string;
-  serverUrlOverride?: string;
-  portable?: boolean;
+  dataDir: string;
+  serverUrlOverride: string;
 }
 
 export interface DesktopBridge {

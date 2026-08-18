@@ -1,7 +1,7 @@
 import type { PeerInfo, VoiceState } from '@/types/api';
-import { preferCodecs, tuneSender } from './sdp';
 import { Negotiator, type SignalData } from './negotiation';
 import { InboundStreams } from './inbound';
+import { OutboundTracks } from './outbound';
 import type { QualityPreset } from './quality';
 
 /** O que um Peer precisa saber do motor — mantém a dependência num sentido só. */
@@ -16,7 +16,6 @@ export interface PeerHost {
   onNotice(message: string): void;
 }
 
-const MIC_BITRATE = 96_000;
 /** Depois disso sem conectar, avisamos que provavelmente é a rede travando. */
 const STUCK_WARNING_MS = 20_000;
 
@@ -27,8 +26,8 @@ const STUCK_WARNING_MS = 20_000;
  * uma das outras. O servidor só apresenta os dois lados; áudio e vídeo nunca
  * passam por ele.
  *
- * Esta classe cuida das faixas (quem manda o quê para quem). O aperto de mão
- * em si mora no `Negotiator`.
+ * Esta classe é o ponto de encontro de três peças: o `Negotiator` (aperto de
+ * mão), o `InboundStreams` (o que chega) e o `OutboundTracks` (o que sai).
  */
 export class Peer {
   readonly pc: RTCPeerConnection;
@@ -37,11 +36,7 @@ export class Peer {
 
   private readonly negotiator: Negotiator;
   private readonly inbound = new InboundStreams(() => this.host.onPeerChanged(this));
-  private senders: Record<'mic' | 'screenVideo' | 'screenAudio', RTCRtpSender | null> = {
-    mic: null,
-    screenVideo: null,
-    screenAudio: null,
-  };
+  private readonly outbound: OutboundTracks;
 
   private stuckWarned = false;
   private readonly stuckTimer: ReturnType<typeof setTimeout>;
@@ -59,6 +54,7 @@ export class Peer {
       bundlePolicy: 'max-bundle',
       rtcpMuxPolicy: 'require',
     });
+    this.outbound = new OutboundTracks(this.pc);
 
     this.negotiator = new Negotiator({
       pc: this.pc,
@@ -139,62 +135,26 @@ export class Peer {
   private publishLocalTracks(): void {
     // A tela NÃO entra aqui: ela só é enviada a quem pedir para assistir (ver
     // `watch`/`unwatch`). O microfone, sim, vai para todo mundo.
-    const mic = this.host.localMic;
-    if (mic) {
-      for (const track of mic.getAudioTracks()) this.senders.mic = this.pc.addTrack(track, mic);
-    }
+    this.outbound.publishMic(this.host.localMic);
     this.retuneSenders();
   }
 
   retuneSenders(): void {
-    const q = this.host.quality;
-    if (this.senders.screenVideo) {
-      const transceiver = this.pc
-        .getTransceivers()
-        .find((t) => t.sender === this.senders.screenVideo);
-      preferCodecs(transceiver);
-      void tuneSender(this.senders.screenVideo, {
-        bitrate: q.video,
-        fps: q.fps,
-        keepResolution: true,
-      });
-    }
-    if (this.senders.screenAudio) void tuneSender(this.senders.screenAudio, { bitrate: q.audio });
-    if (this.senders.mic) void tuneSender(this.senders.mic, { bitrate: MIC_BITRATE });
+    this.outbound.retune(this.host.quality);
   }
 
   addScreen(stream: MediaStream): void {
-    if (this.senders.screenVideo) return; // já está assistindo
-    for (const track of stream.getVideoTracks()) {
-      this.senders.screenVideo = this.pc.addTrack(track, stream);
-    }
-    for (const track of stream.getAudioTracks()) {
-      this.senders.screenAudio = this.pc.addTrack(track, stream);
-    }
+    this.outbound.addScreen(stream);
     this.retuneSenders();
   }
 
   removeScreen(): void {
-    for (const key of ['screenVideo', 'screenAudio'] as const) {
-      const sender = this.senders[key];
-      if (!sender) continue;
-      try {
-        this.pc.removeTrack(sender);
-      } catch (err) {
-        console.warn('[rtc]', (err as Error).message);
-      }
-      this.senders[key] = null;
-    }
+    this.outbound.removeScreen();
   }
 
   /** Troca a faixa de microfone sem renegociar — usado ao mudar de aparelho. */
-  async swapMic(track: MediaStreamTrack): Promise<void> {
-    if (!this.senders.mic) return;
-    try {
-      await this.senders.mic.replaceTrack(track);
-    } catch (err) {
-      console.warn('[rtc] replaceTrack falhou:', (err as Error).message);
-    }
+  swapMic(track: MediaStreamTrack): Promise<void> {
+    return this.outbound.swapMic(track);
   }
 
   /* ----------------------------------------------- mídia que chega --- */
