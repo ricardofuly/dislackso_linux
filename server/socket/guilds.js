@@ -142,6 +142,7 @@ function registerGuilds(socket, ctx) {
     const guild = requireOwner(guildId, 'excluir salas');
     if (!guild.channels.some((c) => c.id === channelId)) throw new Error('canal inexistente');
 
+    presence.evictVoiceRoom(guildId, channelId);
     guild.channels = guild.channels.filter((c) => c.id !== channelId);
     store.save();
     cb({ guild: publicGuild(guild) });

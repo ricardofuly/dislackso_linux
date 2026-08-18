@@ -72,7 +72,12 @@ export async function createChannel(
 
 export async function deleteChannel(guildId: string, channelId: string): Promise<void> {
   const res = await attempt(() => ask('channel:delete', { guildId, channelId }));
-  if (res) useGuilds.getState().upsert(res.guild);
+  if (!res) return;
+  useGuilds.getState().upsert(res.guild);
+  const current = useRoom.getState().room;
+  if (current?.guildId === guildId && current.channelId === channelId) {
+    await leaveVoice({ silent: true });
+  }
 }
 
 export async function toggleFriend(userId: string, add: boolean): Promise<void> {

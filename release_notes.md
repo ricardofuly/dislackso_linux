@@ -1,3 +1,34 @@
+### Versão 4.0.1
+
+Correções e melhorias pós-lançamento da Aurora 4.0.
+
+**Transmissão de tela**
+
+* **Seletor de tela no app desktop.** O Electron não abre o seletor nativo do sistema —
+  quem decide o que aparece na lista somos nós. Agora existe uma modal própria com
+  prévia das telas e janelas, filtro por tipo e toggle de áudio do sistema antes de
+  confirmar — como no Discord.
+* **Correções nos tiles de transmissão** e no fluxo de captura no desktop.
+
+**Atalhos configuráveis** (#12)
+
+* Mutar/desmutar microfone, iniciar/parar transmissão, apertar-para-falar e
+  anotações agora têm atalhos editáveis em *Configurações › Atalhos*.
+* Cada atalho pode ser regravado clicando no botão e pressionando a combinação
+  desejada; dá pra restaurar o padrão de fábrica.
+
+**Supressão de ruído com IA** (#8)
+
+* Novo toggle **Suprimir ruído de fundo** em *Configurações › Voz e vídeo*, usando
+  RNNoise (WebAssembly) em tempo real no microfone — reduz teclado, ventilador e
+  barulho ambiente sem precisar de nada externo.
+* O teste de microfone na mesma tela mostra o efeito ao vivo.
+
+**Outros**
+
+* CORS do servidor ajustado para o fluxo de captura no desktop.
+* Ícones do favicon e da tela de carregamento atualizados.
+
 ### Versão 4.0.0
 
 Uma reescrita da base do app. Por fora, o DiSlackso faz exatamente o que fazia — nada de
