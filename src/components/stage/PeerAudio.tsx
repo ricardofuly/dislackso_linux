@@ -4,14 +4,14 @@ import { clamp } from '@/lib/format';
 import { useRoom } from '@/stores/room';
 import { useSettings } from '@/stores/settings';
 
-/**
- * Quanto o volume dos outros abaixa enquanto eu compartilho áudio do sistema.
- *
- * Não some de vez porque é limitação do Windows: o loopback captura tudo que
- * sai pelos alto-falantes, inclusive a voz da chamada. Abaixar é o que dá
- * para fazer sem mutar a conversa inteira.
- */
-const DUCK_LEVEL = 0.25;
+function getDuckFactor(setting: string | boolean): number {
+  if (setting === false || setting === 'off') return 1;
+  if (setting === 'mute') return 0;
+  if (setting === 'duck10') return 0.1;
+  if (setting === 'duck25' || setting === true) return 0.25;
+  if (setting === 'duck50') return 0.5;
+  return 0.25;
+}
 
 /**
  * O áudio de microfone de cada participante.
@@ -33,7 +33,7 @@ export function PeerAudio() {
   useEffect(() => {
     const sharingWithAudio =
       voice.screen.active && (voice.screen.stream?.getAudioTracks().length ?? 0) > 0;
-    const duck = sharingWithAudio && duckOnShare ? DUCK_LEVEL : 1;
+    const duck = sharingWithAudio ? getDuckFactor(duckOnShare) : 1;
 
     const alive = new Set<string>();
 

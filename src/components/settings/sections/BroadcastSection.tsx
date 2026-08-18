@@ -53,17 +53,28 @@ export function BroadcastSection() {
       </SettingRow>
 
       <SettingRow
-        title="Abaixar a call ao compartilhar áudio"
+        title="Anti-retorno da call ao compartilhar áudio"
         desc={
-          'Enquanto você transmite com áudio do sistema, abaixa (não desliga) a voz de quem está na '
-          + 'chamada — reduz o quanto ela vaza na sua transmissão. O Windows não separa por aplicativo, '
-          + 'então não dá pra eliminar 100%; pra isso, configure uma saída de áudio separada pra voz.'
+          'O que fazer com a voz dos outros participantes enquanto você transmite com áudio do sistema. '
+          + 'O app isola a chamada na captura e permite atenuar ou silenciar a call para isolamento total.'
         }
       >
-        <Toggle
-          label="Abaixar a call ao compartilhar áudio"
-          checked={s.duckVoiceOnShare}
-          onChange={(v) => s.set('duckVoiceOnShare', v)}
+        <Select
+          value={
+            typeof s.duckVoiceOnShare === 'boolean'
+              ? s.duckVoiceOnShare
+                ? 'duck25'
+                : 'off'
+              : s.duckVoiceOnShare || 'duck25'
+          }
+          options={[
+            { value: 'mute', label: 'Silenciar chamada (Sem retorno)' },
+            { value: 'duck10', label: 'Abaixar bastante (10%)' },
+            { value: 'duck25', label: 'Abaixar moderado (25%)' },
+            { value: 'duck50', label: 'Abaixar leve (50%)' },
+            { value: 'off', label: 'Não alterar volume' },
+          ]}
+          onChange={(value) => s.set('duckVoiceOnShare', value)}
         />
       </SettingRow>
 

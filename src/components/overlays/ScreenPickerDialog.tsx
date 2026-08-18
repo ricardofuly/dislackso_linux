@@ -81,8 +81,7 @@ export function ScreenPickerDialog() {
             />
           </div>
           <p className="text-[12px] leading-snug text-dim">
-            Inclui tudo que sai pelos seus alto-falantes agora, inclusive a voz de quem estiver na
-            chamada — não dá para separar só o som do desktop.
+            Inclui os sons do seu computador (jogos, vídeos e sistema). O DiSlackso isola a chamada para evitar retorno.
           </p>
         </div>
       ) : (

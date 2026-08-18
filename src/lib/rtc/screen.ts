@@ -21,6 +21,7 @@ function constraintsFor(q: QualityPreset): MediaStreamConstraints {
       noiseSuppression: false,
       autoGainControl: false,
       suppressLocalAudioPlayback: false,
+      restrictOwnAudio: true,
     },
     // Hints não padronizados; navegadores que não conhecem simplesmente ignoram.
     systemAudio: 'include',

@@ -40,7 +40,7 @@ export interface SettingsValues {
   noiseSuppression: boolean;
   autoGainControl: boolean;
   micMode: 'voz' | 'ptt';
-  duckVoiceOnShare: boolean;
+  duckVoiceOnShare: string | boolean;
   // atalhos
   muteKey: string;
   screenKey: string;
@@ -62,7 +62,7 @@ export const DEFAULT_SETTINGS: SettingsValues = {
   quality: '1080p60', contentHint: 'motion', autoFocus: true, selfPreview: true, shareSystemAudio: true,
   micId: '', speakerId: '', micGain: 1, rnnoise: true,
   echoCancellation: true, noiseSuppression: true, autoGainControl: true,
-  micMode: 'voz', duckVoiceOnShare: true,
+  micMode: 'voz', duckVoiceOnShare: 'duck25',
   muteKey: 'KeyM', screenKey: 'KeyS', pttKey: 'Space', annotKey: 'KeyP',
   autoUpdate: true, feedbackSounds: true,
   annotAllow: true, annotFade: 8, annotColor: '#ff3b5c', annotSize: 4,
