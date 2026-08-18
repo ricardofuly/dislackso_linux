@@ -68,17 +68,20 @@ function iconButton(name, label, className = 'btn btn-soft') {
 /* ================================================== teste de microfone == */
 
 const MicTest = {
-  ctx: null, raw: null, raf: 0, bar: null,
+  ctx: null, raw: null, rnnoiseNode: null, raf: 0, bar: null, gain: null, listenGain: null,
+  listen: false,
 
-  async start(barEl) {
+  async start(barEl, listen = false) {
     this.stop();
     this.bar = barEl;
+    this.listen = !!listen;
     try {
       const s = Settings.values;
       this.raw = await navigator.mediaDevices.getUserMedia({
         audio: {
+          channelCount: 1,
           echoCancellation: s.echoCancellation,
-          noiseSuppression: s.noiseSuppression,
+          noiseSuppression: (s.rnnoise !== false) ? false : s.noiseSuppression,
           autoGainControl: s.autoGainControl,
           ...(s.micId ? { deviceId: { exact: s.micId } } : {}),
         },
@@ -88,15 +91,41 @@ const MicTest = {
       return;
     }
     const Ctx = window.AudioContext || window.webkitAudioContext;
-    this.ctx = new Ctx();
+    try { this.ctx = new Ctx({ sampleRate: 48000 }); } catch { this.ctx = new Ctx(); }
+
+    if (Settings.get('speakerId') && 'setSinkId' in this.ctx && typeof this.ctx.setSinkId === 'function') {
+      this.ctx.setSinkId(Settings.get('speakerId')).catch(() => {});
+    }
+
     const src = this.ctx.createMediaStreamSource(this.raw);
     const gain = this.ctx.createGain();
     gain.gain.value = Settings.get('micGain');
     const analyser = this.ctx.createAnalyser();
     analyser.fftSize = 512;
-    src.connect(gain); gain.connect(analyser);
+
+    let rnnoiseNode = null;
+    if (Settings.get('rnnoise') !== false && typeof RNNoise !== 'undefined') {
+      rnnoiseNode = await RNNoise.createNode(this.ctx);
+    }
+
+    if (rnnoiseNode) {
+      src.connect(rnnoiseNode);
+      rnnoiseNode.connect(gain);
+    } else {
+      src.connect(gain);
+    }
+    gain.connect(analyser);
+
+    // Retorno de áudio para escutar o próprio microfone
+    const listenGain = this.ctx.createGain();
+    listenGain.gain.value = this.listen ? 1 : 0;
+    gain.connect(listenGain);
+    listenGain.connect(this.ctx.destination);
+
     const buf = new Uint8Array(analyser.frequencyBinCount);
     this.gain = gain;
+    this.listenGain = listenGain;
+    this.rnnoiseNode = rnnoiseNode;
 
     const tick = () => {
       analyser.getByteFrequencyData(buf);
@@ -109,13 +138,27 @@ const MicTest = {
     tick();
   },
 
+  setListen(enabled) {
+    this.listen = !!enabled;
+    if (this.listenGain && this.ctx) {
+      this.listenGain.gain.setValueAtTime(this.listen ? 1 : 0, this.ctx.currentTime);
+    }
+  },
+
   setGain(v) { if (this.gain) this.gain.gain.value = v; },
 
   stop() {
     cancelAnimationFrame(this.raf);
+    if (this.rnnoiseNode) {
+      try { this.rnnoiseNode.port.postMessage({ destroy: true }); } catch {}
+      try { this.rnnoiseNode.disconnect(); } catch {}
+    }
+    if (this.listenGain) {
+      try { this.listenGain.disconnect(); } catch {}
+    }
     if (this.raw) for (const t of this.raw.getTracks()) t.stop();
     if (this.ctx) { try { this.ctx.close(); } catch {} }
-    this.ctx = null; this.raw = null; this.gain = null;
+    this.ctx = null; this.raw = null; this.gain = null; this.listenGain = null; this.rnnoiseNode = null;
     if (this.bar) this.bar.style.width = '0%';
   },
 };
@@ -361,24 +404,60 @@ const SettingsUI = {
       ) : null,
     }));
 
-    /* medidor + volume */
+    /* medidor + volume + retorno */
     const testWrap = el('div');
+    const testRow = el('div');
+    testRow.style.display = 'flex';
+    testRow.style.alignItems = 'center';
+    testRow.style.gap = '12px';
+    testRow.style.flexWrap = 'wrap';
+
     const meter = el('div', 'meter', '<i></i>');
     const bar = meter.querySelector('i');
     const testBtn = iconButton('mic', 'Testar microfone');
     let testing = false;
+    let listen = false;
+
     const setLabel = (ico, txt) => {
       testBtn.innerHTML = `<span class="i">${icon(ico, 17)}</span><span>${esc(txt)}</span>`;
     };
+
+    const listenLabel = el('label');
+    listenLabel.style.display = 'inline-flex';
+    listenLabel.style.alignItems = 'center';
+    listenLabel.style.gap = '6px';
+    listenLabel.style.cursor = 'pointer';
+    listenLabel.style.fontSize = '13px';
+    listenLabel.style.userSelect = 'none';
+    listenLabel.innerHTML = '<input type="checkbox" style="cursor: pointer;"><span>Ouvir meu microfone (retorno)</span>';
+
+    const listenInput = listenLabel.querySelector('input');
+    listenInput.onchange = () => {
+      listen = listenInput.checked;
+      MicTest.setListen(listen);
+    };
+
     testBtn.onclick = async () => {
-      if (testing) { MicTest.stop(); testing = false; setLabel('mic', 'Testar microfone'); return; }
+      if (testing) {
+        MicTest.stop();
+        testing = false;
+        setLabel('mic', 'Testar microfone');
+        return;
+      }
       testing = true;
       setLabel('micOff', 'Parar teste');
-      await MicTest.start(bar);
+      await MicTest.start(bar, listen);
       await this.loadDevices();     // agora os nomes aparecem
     };
-    testWrap.append(testBtn, meter);
-    box.appendChild(row({ title: 'Nível de entrada', desc: 'Fale e veja a barra mexer.', control: testWrap, stack: true }));
+
+    testRow.append(testBtn, listenLabel);
+    testWrap.append(testRow, meter);
+    box.appendChild(row({
+      title: 'Nível de entrada',
+      desc: 'Fale e veja a barra mexer. Marque a opção para ouvir sua própria voz e conferir a supressão de ruído.',
+      control: testWrap,
+      stack: true,
+    }));
 
     box.appendChild(row({
       title: 'Volume de entrada',
@@ -417,13 +496,14 @@ const SettingsUI = {
     }
 
     for (const [key, title, desc] of [
+      ['rnnoise', 'Supressão de ruído RNNoise (IA)', 'Reduz ruídos de fundo (teclado, cliques, ventilador) com rede neural em tempo real.'],
       ['echoCancellation', 'Cancelamento de eco', 'Evita que o som da caixa volte pelo microfone.'],
-      ['noiseSuppression', 'Redução de ruído', 'Corta ventilador, teclado e chiado.'],
+      ['noiseSuppression', 'Redução de ruído padrão', 'Filtro de ruído simples do navegador/sistema.'],
       ['autoGainControl', 'Volume automático', 'O navegador equaliza o volume da sua voz.'],
     ]) {
       box.appendChild(row({
         title, desc,
-        control: switchControl(Settings.get(key), (v) => {
+        control: switchControl(Settings.get(key) !== false, (v) => {
           Settings.set(key, v);
           Voice.setMicDevice();
           toast('Aplicado ao microfone.');

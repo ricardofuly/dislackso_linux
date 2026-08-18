@@ -346,7 +346,7 @@ class VoiceEngine {
     this.contentHint = 'motion';
 
     this.local = { micStream: null, screenStream: null };
-    this.mic = { raw: null, ctx: null, gain: null, analyser: null, dest: null, buf: null, raf: 0 };
+    this.mic = { raw: null, ctx: null, rnnoiseNode: null, gain: null, analyser: null, dest: null, buf: null, raf: 0 };
 
     this.micEnabled = false;   // o que o usuário escolheu
     this.pttHeld = false;      // tecla de falar pressionada
@@ -411,7 +411,7 @@ class VoiceEngine {
       audio: {
         channelCount: 1,
         echoCancellation: s.echoCancellation,
-        noiseSuppression: s.noiseSuppression,
+        noiseSuppression: (s.rnnoise !== false) ? false : s.noiseSuppression,
         autoGainControl: s.autoGainControl,
         ...(s.micId ? { deviceId: { exact: s.micId } } : {}),
       },
@@ -433,7 +433,8 @@ class VoiceEngine {
     this.mic.raw = raw;
 
     const Ctx = window.AudioContext || window.webkitAudioContext;
-    const ctx = new Ctx({ sampleRate: 48000 });
+    let ctx;
+    try { ctx = new Ctx({ sampleRate: 48000 }); } catch { ctx = new Ctx(); }
     const src = ctx.createMediaStreamSource(raw);
     const gain = ctx.createGain();
     gain.gain.value = clamp(Number(s.micGain) || 1, 0, 3);
@@ -442,12 +443,22 @@ class VoiceEngine {
     analyser.smoothingTimeConstant = 0.4;
     const dest = ctx.createMediaStreamDestination();
 
-    src.connect(gain);
+    let rnnoiseNode = null;
+    if (s.rnnoise !== false && typeof RNNoise !== 'undefined') {
+      rnnoiseNode = await RNNoise.createNode(ctx);
+    }
+
+    if (rnnoiseNode) {
+      src.connect(rnnoiseNode);
+      rnnoiseNode.connect(gain);
+    } else {
+      src.connect(gain);
+    }
     gain.connect(dest);
     gain.connect(analyser);
 
     Object.assign(this.mic, {
-      ctx, src, gain, analyser, dest,
+      ctx, src, rnnoiseNode, gain, analyser, dest,
       buf: new Uint8Array(analyser.frequencyBinCount),
     });
 
@@ -459,9 +470,13 @@ class VoiceEngine {
 
   closeMicGraph() {
     cancelAnimationFrame(this.mic.raf);
+    if (this.mic.rnnoiseNode) {
+      try { this.mic.rnnoiseNode.port.postMessage({ destroy: true }); } catch {}
+      try { this.mic.rnnoiseNode.disconnect(); } catch {}
+    }
     if (this.mic.raw) for (const t of this.mic.raw.getTracks()) t.stop();
     if (this.mic.ctx) { try { this.mic.ctx.close(); } catch {} }
-    this.mic = { raw: null, ctx: null, gain: null, analyser: null, dest: null, buf: null, raf: 0 };
+    this.mic = { raw: null, ctx: null, rnnoiseNode: null, gain: null, analyser: null, dest: null, buf: null, raf: 0 };
   }
 
   /** Troca o microfone em uso, sem derrubar as conexões. */

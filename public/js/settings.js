@@ -36,6 +36,7 @@ const DEFAULT_SETTINGS = {
   micId: '',
   speakerId: '',
   micGain: 1,
+  rnnoise: true,
   echoCancellation: true,
   noiseSuppression: true,
   autoGainControl: true,
