@@ -110,10 +110,10 @@ export function SettingsDialog({ section, onNavigate, onClose }: SettingsDialogP
           <div className="min-w-0 flex-1 overflow-y-auto bg-bg-2">
             <div className="mx-auto max-w-2xl px-8 py-10">
               {/*
-                A `key` remonta o bloco a cada seção, e com isso a animação de
-                entrada roda de novo. Sem AnimatePresence de propósito: a seção
-                antiga sai na hora, e não há animação de saída que possa
-                emperrar e deixar o conteúdo velho na tela.
+                A `key` remonta o bloco a cada seção, e a animação de entrada
+                roda de novo. Sem `AnimatePresence mode="wait"` aqui: nesta
+                combinação de Motion e React ele não conclui a troca, e o menu
+                destacava a seção nova enquanto o conteúdo continuava o antigo.
               */}
               <motion.div
                 key={section}

@@ -47,12 +47,10 @@ export function App() {
       {/*
         A troca entre entrada e app é uma remoção direta, sem AnimatePresence.
 
-        Já foi uma transição animada, e o custo era alto demais: a saída da
-        tela de entrada dependia de uma animação terminar, e quando ela não
-        terminava a tela ficava presa por cima — visível, cobrindo o app e
-        engolindo todo clique. Uma animação que pode deixar a interface
-        inutilizável não paga o que custa. Quem entra continua vendo o app
-        surgir, pela animação de entrada do próprio Shell.
+        Aqui a falha custa caro demais: se a saída da tela de entrada não se
+        completa, ela fica presa por cima — visível, cobrindo o app e engolindo
+        todo clique. Trocar direto não tem esse modo de falha, e quem entra
+        continua vendo o app surgir pela animação de entrada do próprio Shell.
       */}
       {phase === 'gate' && (
         <div className="fixed inset-0 z-40">
