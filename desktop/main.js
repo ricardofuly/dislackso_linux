@@ -19,10 +19,19 @@ const fs = require('fs');
 const crypto = require('crypto');
 const { spawn } = require('child_process');
 const { autoUpdater } = require('electron-updater');
+const appProtocol = require('./app-protocol');
+const { migrateLegacyStorage } = require('./migrate-storage');
+
+/** A interface compilada para o desktop (npm run build:desktop). */
+const BUNDLE_DIR = path.join(__dirname, '..', 'dist', 'desktop');
+
+// Precisa acontecer antes de app.whenReady(): depois disso o Chromium já
+// decidiu quais esquemas são privilegiados.
+appProtocol.registerScheme();
 
 const CONFIG_FILE = path.join(app.getPath('userData'), 'config.json');
 const DEFAULT_DEV_PASSWORD = 'dislackso-dev';
-const DEFAULT_SERVER_URL = 'https://dislackso.onrender.com'; // mesmo padrão de public/js/config.js
+const DEFAULT_SERVER_URL = 'https://dislackso.onrender.com'; // mesmo padrão de src/lib/env.ts
 
 /** Mesmo esquema de server/index.js (scrypt builtin, sem dependência nativa). */
 function hashSecret(value) {
@@ -48,6 +57,7 @@ const DEFAULTS = {
   devPasswordHash: '',         // preenchido no primeiro boot, ver abaixo
   serverUrlOverride: '',       // definido pelo painel de desenvolvedor
   adminKey: '',                 // pra mandar avisos — precisa bater com ADMIN_KEY no Render
+  storageMigrated: false,       // sessão e preferências já vieram da origem file://
 };
 
 /* ------------------------------------------------------------ config --- */
@@ -118,6 +128,15 @@ function createWindow() {
   win.show();
   win.on('closed', () => { win = null; });
 
+  // Uma vez só, no primeiro boot da 4.0: traz sessão e preferências da origem
+  // antiga. Ver desktop/migrate-storage.js.
+  win.webContents.once('did-finish-load', () => {
+    void migrateLegacyStorage(win.webContents, {
+      done: readConfig().storageMigrated,
+      markDone: () => writeConfig({ storageMigrated: true }),
+    });
+  });
+
   // Links externos abrem no navegador do sistema, nunca dentro do app.
   win.webContents.setWindowOpenHandler(({ url }) => {
     if (/^https?:/.test(url)) shell.openExternal(url);
@@ -137,8 +156,22 @@ function createWindow() {
   goHome();
 }
 
+/**
+ * Carrega a interface compilada.
+ *
+ * Vai por `app://` e não por `file://`: o bundle usa módulos ES, que o
+ * Chromium recusa carregar de `file://` (ver desktop/app-protocol.js).
+ */
 function goHome() {
-  if (win) win.loadFile(path.join(__dirname, '..', 'public', 'index.html'));
+  if (!win) return;
+  if (!appProtocol.bundleExists(BUNDLE_DIR)) {
+    dialog.showErrorBox(
+      'Interface não compilada',
+      'A pasta dist/desktop não existe. Rode "npm run build:desktop" antes de abrir o app.',
+    );
+    return;
+  }
+  win.loadURL(appProtocol.indexUrl());
 }
 
 /* --------------------------------------------------- janela dev ------- */
@@ -476,6 +509,7 @@ ipcMain.handle('dialog:pickFolder', async () => {
 
 app.whenReady().then(() => {
   Menu.setApplicationMenu(null);
+  appProtocol.serve(BUNDLE_DIR);
   installDisplayMediaHandler();
 
   // Microfone e camera sao concedidos localmente: quem pede e a nossa propria UI.

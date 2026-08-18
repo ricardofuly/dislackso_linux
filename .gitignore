@@ -13,3 +13,9 @@ build/icon.ico
 *.log
 dev-app-update.yml
 RNNOISE.md
+
+# backup local do v3 durante o refactor 4.0
+.backup/
+
+# saida do electron-builder
+release/

@@ -1,0 +1,72 @@
+/* ==========================================================================
+   tokens.css — a fonte única de verdade visual
+   Todo componente se pinta a partir daqui. Trocar de tema é trocar variáveis,
+   nunca reescrever regra de componente.
+   ========================================================================== */
+
+@theme {
+  /* --- cor: superfícies (valores do tema escuro, o padrão) --------------- */
+  --color-bg-0: #17181b;
+  --color-bg-1: #1f2023;
+  --color-bg-2: #2b2d31;
+  --color-bg-3: #313338;
+  --color-bg-4: #3a3c43;
+  --color-field: #131417;
+  --color-tile: #101114;
+
+  /* --- cor: traço e texto ------------------------------------------------ */
+  --color-line: rgb(255 255 255 / 0.07);
+  --color-line-strong: rgb(255 255 255 / 0.13);
+  --color-hover: rgb(255 255 255 / 0.05);
+  --color-active: rgb(255 255 255 / 0.09);
+  --color-text: #dbdee1;
+  --color-dim: #969ba3;
+  --color-bright: #f7f8f8;
+
+  /* --- cor: acento (o usuário troca em Configurações) -------------------- */
+  --color-accent: #5865f2;
+  --color-accent-soft: rgb(88 101 242 / 0.16);
+  --color-accent-fg: #ffffff;
+
+  /* --- cor: estados ------------------------------------------------------ */
+  --color-green: #23a55a;
+  --color-yellow: #f0b232;
+  --color-red: #da373c;
+  --color-red-deep: #a12d2f;
+
+  /* --- raio: a escala vem das preferências ------------------------------- */
+  --radius-scale: 1;
+  --radius-xs: calc(4px * var(--radius-scale));
+  --radius-sm: calc(8px * var(--radius-scale));
+  --radius-md: calc(12px * var(--radius-scale));
+  --radius-lg: calc(18px * var(--radius-scale));
+  --radius-xl: calc(26px * var(--radius-scale));
+  --radius-pill: 999px;
+
+  /* --- tempo: a escala vem das preferências (0 = sem animação) ----------- */
+  --speed: 1;
+  --duration-fast: calc(130ms * var(--speed));
+  --duration-med: calc(240ms * var(--speed));
+  --duration-slow: calc(420ms * var(--speed));
+
+  --ease-glass: cubic-bezier(0.22, 0.8, 0.3, 1);
+  --ease-out-soft: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-bounce: cubic-bezier(0.34, 1.4, 0.5, 1);
+
+  /* --- vidro ------------------------------------------------------------- */
+  --glass-alpha: 0.74;
+  --glass-blur: 20px;
+  --glass-saturate: 165%;
+  --glass-sheen: rgb(255 255 255 / 0.1);
+  --glass-rim: rgb(255 255 255 / 0.16);
+  --glass-shade: rgb(0 0 0 / 0.28);
+
+  /* --- sombra ------------------------------------------------------------ */
+  --shadow-soft: 0 2px 8px rgb(0 0 0 / 0.3);
+  --shadow-lift: 0 12px 40px rgb(0 0 0 / 0.5);
+  --shadow-glass: 0 8px 32px rgb(0 0 0 / 0.38), 0 1px 2px rgb(0 0 0 / 0.4);
+
+  /* --- tipografia -------------------------------------------------------- */
+  --font-sans: "Inter", "Segoe UI Variable", "Segoe UI", system-ui, sans-serif;
+  --font-mono: ui-monospace, "Cascadia Code", "SF Mono", Menlo, monospace;
+}
