@@ -1,0 +1,85 @@
+/* ==========================================================================
+   motion.css — o que se move e o que respeita quem pediu para não mover
+   As animações de componente vivem no Motion (motion.dev). Aqui ficam só as
+   que precisam existir antes do React montar, ou que são puro CSS.
+   ========================================================================== */
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes pulse-soft {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
+/* Anel de atenção — quem começa a transmitir pulsa uma vez. */
+@keyframes attention-ring {
+  0% {
+    box-shadow: 0 0 0 0 var(--color-accent-soft);
+  }
+  70% {
+    box-shadow: 0 0 0 14px transparent;
+  }
+  100% {
+    box-shadow: 0 0 0 0 transparent;
+  }
+}
+
+/* Sopro de luz no vidro quando algo importante acontece na sala. */
+@keyframes glass-flare {
+  0% {
+    opacity: 0.9;
+  }
+  35% {
+    opacity: 1.6;
+  }
+  100% {
+    opacity: 0.9;
+  }
+}
+
+@utility animate-attention {
+  animation: attention-ring calc(900ms * var(--speed)) var(--ease-out-soft) 2;
+}
+
+@utility animate-spin-soft {
+  animation: spin 0.7s linear infinite;
+}
+
+@utility animate-pulse-soft {
+  animation: pulse-soft calc(1600ms * var(--speed)) var(--ease-glass) infinite;
+}
+
+/* O flash sutil de feedback (som + luz) quando chega mensagem ou alguém entra. */
+.feedback-flare .glass::before {
+  animation: glass-flare calc(520ms * var(--speed)) var(--ease-out-soft);
+}
+
+/* Animações desligadas nas preferências: tudo instantâneo, nada quebra de
+   layout (as animações de entrada usam `both`, então o estado final fica). */
+[data-motion='off'] *,
+[data-motion='off'] *::before,
+[data-motion='off'] *::after {
+  transition-duration: 1ms !important;
+  animation-duration: 1ms !important;
+  animation-iteration-count: 1 !important;
+}
+
+/* Respeita quem pediu menos movimento no sistema — a não ser que a pessoa
+   tenha ligado as animações explicitamente aqui dentro. */
+@media (prefers-reduced-motion: reduce) {
+  :root:not([data-motion='on']) *,
+  :root:not([data-motion='on'])::before,
+  :root:not([data-motion='on'])::after {
+    transition-duration: 1ms !important;
+    animation-duration: 1ms !important;
+  }
+}
