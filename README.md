@@ -11,7 +11,7 @@ sua tela.
 
 ## Download
 
-[**Baixar DiSlackso para Windows**](https://github.com/spikeleez/dislackso/releases/latest/download/DiSlackso-Setup-3.5.0.exe) | [Versão Portátil (.zip)](https://github.com/spikeleez/dislackso/releases/latest/download/DiSlackso-portable-3.5.0.zip)
+[**Baixar DiSlackso para Windows**](https://github.com/spikeleez/dislackso/releases/latest/download/DiSlackso-Setup-3.5.2.exe) | [Versão Portátil (.zip)](https://github.com/spikeleez/dislackso/releases/latest/download/DiSlackso-portable-3.5.2.zip) | [**Linux (.AppImage)**](https://github.com/spikeleez/dislackso/releases/latest/download/DiSlackso-3.5.2.AppImage) | [.rpm (Fedora e derivados)](https://github.com/spikeleez/dislackso/releases/latest/download/DiSlackso-3.5.2.rpm)
 
 Você pode instalar o app no seu computador e se conectar diretamente aos servidores na nuvem com persistência de dados.
 
@@ -53,7 +53,7 @@ direto e entram com nickname e senha — o app já sabe pra qual servidor ir.
 npm run build
 ```
 
-Gera `dist/DiSlackso-Setup-3.5.0.exe` (~79 MB). Instalador comum: escolhe pasta, cria atalho,
+Gera `dist/DiSlackso-Setup-3.5.2.exe` (~79 MB). Instalador comum: escolhe pasta, cria atalho,
 desinstala pelo Painel de Controle.
 
 > **Sobre o erro "Cannot create symbolic link"**
@@ -74,6 +74,30 @@ desinstala pelo Painel de Controle.
 > Detalhe que engana: a pasta que aparece na mensagem de erro (`...\winCodeSign\242339159`) é
 > temporária e muda a cada tentativa — pré-extrair *nela* não adianta. O que vale é a pasta
 > final, com o nome versionado.
+
+**Linux (.AppImage / .rpm)**, direto numa máquina Linux (ex: Fedora):
+
+```bash
+npm install
+npm run icon && electron-builder --linux --publish never
+```
+
+Gera `dist/DiSlackso-3.5.2.AppImage` e `dist/DiSlackso-3.5.2.rpm`. O `.rpm` instala nativo
+via `dnf`; o `.AppImage` roda sem instalar (`chmod +x` e executa — se faltar o FUSE2,
+`sudo dnf install fuse fuse-libs`). O `npm run build` normal não serve aqui porque o
+`scripts/prep-build.js` que ele chama é só para o cache do Windows (ele detecta a plataforma
+e não faz nada em Linux, mas é mais simples ir direto no `electron-builder`).
+
+Numa máquina Windows, sem um Linux à mão, dá para gerar os dois pelo Docker (o `.rpm`
+depende de ferramentas nativas do Linux e não builda fora dele):
+
+```bash
+docker run --rm -v "${PWD}:/project" electronuserland/builder:wine \
+  bash -c "npm install && npm run icon && npx electron-builder --linux --publish never"
+```
+
+> Só o `.AppImage` é coberto pela auto-atualização (ver abaixo); o `.rpm` precisa ser
+> reinstalado manualmente a cada versão nova.
 
 ### Atualizando
 
@@ -97,14 +121,17 @@ menor que o instalador inteiro.
 npm version minor && npm run build && npm run portable
 ```
 
-Depois suba o release com os quatro arquivos que o atualizador precisa:
+Depois suba o release com os arquivos que o atualizador precisa — do Windows e, se você
+também gerou os pacotes Linux (seção acima), inclua `latest-linux.yml` e o `.AppImage`
+junto:
 
 ```bash
-gh release create v3.2.0 dist/DiSlackso-Setup-*.exe dist/*.blockmap dist/latest.yml dist/DiSlackso-portable-*.zip --title "..." --notes "..."
+gh release create v3.2.0 dist/DiSlackso-Setup-*.exe dist/*.blockmap dist/latest.yml dist/DiSlackso-portable-*.zip dist/*.AppImage dist/*.rpm dist/latest-linux.yml --title "..." --notes "..."
 ```
 
-O `latest.yml` é obrigatório: é o manifesto que o atualizador lê. Sem ele, os apps instalados
-não enxergam a versão nova. O `.blockmap` é o que permite o download incremental.
+O `latest.yml` (Windows) e o `latest-linux.yml` (Linux) são obrigatórios: são os manifestos
+que o atualizador lê em cada plataforma. Sem eles, os apps instalados não enxergam a versão
+nova. O `.blockmap` é o que permite o download incremental no Windows.
 
 > O repositório precisa ser **público**. O atualizador roda na máquina dos seus amigos, sem
 > autenticação, e o GitHub responde 404 em repositório privado — não há configuração no app

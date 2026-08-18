@@ -1,3 +1,21 @@
+### Versão 3.5.2
+
+* **Novo — ícone do app:** o DiSlackso ganhou um ícone novo (o "D" em balão de fala, gradiente
+  azul/roxo), substituindo o desenho antigo em todo lugar — executável, instalador, atalho,
+  favicon da aba do navegador e logo da tela de login.
+
+### Versão 3.5.1
+
+* **Novo — configurações do servidor:** o menu do servidor ganhou um botão **Configurações
+  do servidor**, que junta troca de nome e de ícone num só lugar, com prévia ao vivo do
+  ícone. Antes só dava pra trocar o ícone; renomear exigia mexer direto no banco. Só o dono
+  do servidor pode editar — quem não é dono vê os campos desabilitados.
+* **Novo — suporte a Linux:** graças a um PR do Ricardo Fuly, o build agora gera pacotes
+  nativos para Linux (`.AppImage` e `.rpm`, este último cobrindo instalação via `dnf` no
+  Fedora e derivados). Auto-atualização funciona pela versão `.AppImage`; o `.rpm` precisa
+  ser reinstalado manualmente a cada versão nova — ver
+  [DEPLOY.md](DEPLOY.md#publicar-o-dislackso-para-os-amigos).
+
 ### Versão 3.5.0
 
 * **Correção:** o ícone do servidor (e os avatares de quem está numa sala de voz) ficavam
