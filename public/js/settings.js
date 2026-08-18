@@ -30,6 +30,7 @@ const DEFAULT_SETTINGS = {
   contentHint: 'motion',
   autoFocus: true,
   selfPreview: true,
+  shareSystemAudio: true,
 
   // áudio
   micId: '',

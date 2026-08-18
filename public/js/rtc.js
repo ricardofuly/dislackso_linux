@@ -606,6 +606,7 @@ class VoiceEngine {
     };
 
     let captured;
+    let audioDropped = false;
     try {
       captured = await navigator.mediaDevices.getDisplayMedia(constraints);
     } catch (err) {
@@ -615,6 +616,22 @@ class VoiceEngine {
         try { captured = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true }); }
         catch (fallbackErr) { err = fallbackErr; }
       }
+
+      // No desktop, "Could not start audio source" é o driver de áudio do
+      // Windows recusando o loopback (acontece em algumas placas/saídas de
+      // som). Em vez de travar a captura inteira, repete a MESMA fonte já
+      // escolhida sem pedir áudio — sem abrir o seletor de novo.
+      if (!captured && isDesktop() && window.desktop.retryScreenShareWithoutAudio
+          && /audio source|NotReadableError/i.test(err.name + ' ' + err.message)) {
+        const canRetry = await window.desktop.retryScreenShareWithoutAudio();
+        if (canRetry) {
+          try {
+            captured = await navigator.mediaDevices.getDisplayMedia(constraints);
+            audioDropped = true;
+          } catch (retryErr) { err = retryErr; }
+        }
+      }
+
       if (!captured) {
         const message = err.name === 'NotAllowedError'
           ? 'Compartilhamento cancelado ou bloqueado. Verifique a permissão de captura de tela do Windows.'
@@ -641,9 +658,11 @@ class VoiceEngine {
 
     for (const a of captured.getAudioTracks()) a.contentHint = 'music';
 
-    if (!captured.getAudioTracks().length) {
+    if (audioDropped) {
+      this.emit('notice', 'Compartilhando sem áudio do sistema — a captura com áudio falhou (driver de som). Vídeo funcionando normalmente.');
+    } else if (!captured.getAudioTracks().length) {
       this.emit('notice', isDesktop()
-        ? 'Tela sem áudio — o áudio do sistema só é capturado no Windows.'
+        ? 'Tela sem áudio — o áudio do sistema só é capturado ao compartilhar uma tela inteira, com a opção marcada.'
         : 'Tela sem áudio. Marque "Compartilhar áudio da guia/sistema" na janela de seleção.');
     }
 

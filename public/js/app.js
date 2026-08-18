@@ -860,7 +860,7 @@ function wireActions() {
     title: 'Criar servidor',
     body: `<p>Servidores são privados. Só entra quem receber seu convite.</p>
            <label for="in-guild">Nome do servidor</label>
-           <input id="in-guild" maxlength="48" placeholder="Ex: Turma do LoL">`,
+           <input id="in-guild" type="text" maxlength="48" placeholder="Ex: Turma do LoL">`,
     okText: 'Criar',
     onOk: () => {
       const name = $('#in-guild').value.trim();
@@ -880,7 +880,7 @@ function wireActions() {
     title: 'Entrar com convite',
     body: `<p>Cole o código ou o link que seu amigo enviou.</p>
            <label for="in-invite">Convite</label>
-           <input id="in-invite" placeholder="ABCD2345 ou https://…#invite=ABCD2345">`,
+           <input id="in-invite" type="text" placeholder="ABCD2345 ou https://…#invite=ABCD2345">`,
     okText: 'Entrar',
     onOk: () => {
       const raw = $('#in-invite').value.trim();
@@ -948,9 +948,9 @@ function showInvite(guild) {
     title: 'Convidar amigos',
     body: `<p>Qualquer pessoa com este link entra em <b>${esc(guild.name)}</b>.</p>
            <label>Link de convite</label>
-           <div class="copyrow"><input id="in-link" readonly value="${esc(link)}"></div>
+           <div class="copyrow"><input id="in-link" type="text" readonly value="${esc(link)}"></div>
            <label>Código</label>
-           <div class="copyrow"><input id="in-code" readonly value="${esc(guild.invite)}"></div>`,
+           <div class="copyrow"><input id="in-code" type="text" readonly value="${esc(guild.invite)}"></div>`,
     okText: 'Copiar link',
     onOk: () => copyText(link, 'Link copiado!'),
   });
@@ -984,7 +984,7 @@ function onGuildMenu(e) {
   if (act === 'newtext' || act === 'newvoice') openModal({
     title: act === 'newtext' ? 'Criar canal de texto' : 'Criar sala de voz',
     body: `<label for="in-ch">Nome da sala</label>
-           <input id="in-ch" maxlength="32" placeholder="Ex: ${act === 'newtext' ? 'conversa-geral' : 'Sala 2'}">`,
+           <input id="in-ch" type="text" maxlength="32" placeholder="Ex: ${act === 'newtext' ? 'conversa-geral' : 'Sala 2'}">`,
     okText: 'Criar',
     onOk: () => {
       const name = $('#in-ch').value.trim();

@@ -65,6 +65,21 @@ code { font-family: ui-monospace, Consolas, monospace; font-size: .92em; }
 }
 [data-desktop="1"] .titlebar { display: flex; }
 .titlebar b { color: var(--text); font-weight: 600; letter-spacing: .01em; }
+
+/*
+ * No Windows a janela usa titleBarOverlay: os botões de minimizar/maximizar/
+ * fechar são desenhados pelo próprio SO por cima de tudo, num retângulo no
+ * canto superior direito — nenhum z-index da página consegue ficar acima
+ * deles. .titlebar já reserva essa faixa pro app principal; estas telas em
+ * tela cheia (login, configurações, atualização) também precisam começar
+ * abaixo dela, senão qualquer botão que colocarmos no canto superior fica
+ * embaixo dos controles nativos da janela.
+ */
+[data-desktop="1"] .gate,
+[data-desktop="1"] .settings,
+[data-desktop="1"] .updater {
+  top: 34px;
+}
 .tb-btn {
   -webkit-app-region: no-drag;
   display: inline-flex; align-items: center; gap: 6px;
@@ -686,6 +701,12 @@ input[type=color]::-webkit-color-swatch { border: 0; border-radius: 50%; }
 }
 .picker-tabs button:hover { color: var(--text); }
 .picker-tabs button.on { background: var(--accent); color: var(--accent-fg); }
+
+.picker-audio {
+  display: flex; align-items: center; gap: 9px;
+  margin-top: 14px; font-size: 14px; color: var(--text); cursor: pointer;
+}
+.picker-audio input { width: 16px; height: 16px; accent-color: var(--accent); cursor: pointer; }
 
 /* ====================================================== configurações === */
 .settings { position: fixed; inset: 0; z-index: 80; display: flex; background: var(--bg-3); }

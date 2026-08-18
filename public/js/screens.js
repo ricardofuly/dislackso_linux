@@ -808,9 +808,10 @@ function installScreenPicker() {
   window.desktop.onPickScreen((sources) => new Promise((resolve) => {
     let filter = 'screen';
     let chosen = null;
+    let wantAudio = Settings.get('shareSystemAudio') !== false;
     let settled = false;
 
-    const done = (id) => { if (!settled) { settled = true; resolve(id); } };
+    const done = (id) => { if (!settled) { settled = true; resolve(id ? { id, audio: wantAudio } : null); } };
 
     const render = () => {
       const list = sources.filter((s) => s.type === filter);
@@ -823,6 +824,17 @@ function installScreenPicker() {
           </div>
         </button>`).join('');
 
+      // Áudio do sistema (loopback) só é possível ao compartilhar uma tela
+      // inteira — não existe forma de isolar o som de uma janela só.
+      const audioRow = filter === 'screen' ? `
+        <label class="picker-audio">
+          <input type="checkbox" id="picker-audio-toggle" ${wantAudio ? 'checked' : ''}>
+          <span>Compartilhar áudio do sistema</span>
+        </label>
+        <p class="set-note">Inclui tudo que sai pelos seus alto-falantes agora, inclusive a voz de quem
+          estiver na chamada — não dá pra separar só o som do desktop.</p>`
+        : '<p class="set-note">Janelas específicas não têm áudio do sistema — só o vídeo.</p>';
+
       $('#modal-body').innerHTML = `
         <div class="picker-tabs">
           <button data-tab="screen" class="${filter === 'screen' ? 'on' : ''}">
@@ -833,7 +845,7 @@ function installScreenPicker() {
           </button>
         </div>
         <div class="picker-grid">${grid || '<p>Nada encontrado aqui.</p>'}</div>
-        <p class="set-note">Escolher uma tela inteira captura também o áudio do sistema (Windows).</p>`;
+        ${audioRow}`;
 
       $$('#modal-body [data-tab]').forEach((b) => {
         b.onclick = () => { filter = b.dataset.tab; render(); };
@@ -842,6 +854,11 @@ function installScreenPicker() {
         b.onclick = () => { chosen = b.dataset.id; render(); };
         b.ondblclick = () => { chosen = b.dataset.id; done(chosen); closeModal(); };
       });
+      const audioToggle = $('#picker-audio-toggle');
+      if (audioToggle) audioToggle.onchange = () => {
+        wantAudio = audioToggle.checked;
+        Settings.set('shareSystemAudio', wantAudio);
+      };
     };
 
     openModal({

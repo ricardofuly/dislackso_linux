@@ -39,9 +39,11 @@ contextBridge.exposeInMainWorld('desktop', {
 
   /**
    * Registra quem mostra o seletor de telas. Recebe a lista de fontes e
-   * devolve (via Promise) o id escolhido, ou null para cancelar.
+   * devolve (via Promise) { id, audio } ou null para cancelar.
    */
   onPickScreen: (fn) => { screenPicker = fn; },
+  /** Repete a última captura escolhida, sem áudio, sem reabrir o seletor. */
+  retryScreenShareWithoutAudio: () => ipcRenderer.invoke('screen:retryNoAudio'),
 
   /* ---- atualização ---- */
   update: {

@@ -1,3 +1,25 @@
+### Versão 3.3.4
+
+* **Correção:** os botões de minimizar/maximizar/fechar da janela (Windows) ficavam por
+  cima de elementos da interface em algumas telas (login, configurações, atualização) —
+  o app não reservava espaço pra essa faixa, só a tela principal fazia isso. Corrigido nas
+  três telas.
+* **Correção:** vários campos de texto dentro de modais (criar servidor, criar canal, entrar
+  com convite, link de convite) não tinham o estilo escuro do app nem o foco suave —
+  apareciam com a aparência crua do navegador, inclusive aquele contorno azul feio ao
+  clicar. Faltava o atributo `type="text"` neles.
+* **Correção/novo — compartilhar tela:**
+  - Quando a captura com áudio do sistema falha (driver de som que não sustenta loopback —
+    "Could not start audio source"), o app agora tenta de novo automaticamente **sem
+    áudio**, sem reabrir o seletor. Antes isso travava o compartilhamento por completo.
+  - Novo toggle **"Compartilhar áudio do sistema"** no seletor de tela, como no Discord —
+    dá pra escolher transmitir com ou sem áudio antes mesmo de tentar.
+  - Aviso deixado claro: áudio do sistema captura tudo que sai pelos seus alto-falantes
+    agora, inclusive a voz de quem estiver na chamada — é uma limitação do Windows
+    (loopback é do dispositivo de saída inteiro, não separa por app). Pra ouvir a chamada
+    sem isso vazar pro compartilhamento, configure a saída de voz (Configurações › Voz e
+    vídeo) para um dispositivo diferente do padrão do Windows.
+
 ### Versão 3.3.3
 
 * **Correção:** o app abria o DevTools do Chromium sozinho toda vez que iniciava — parecia

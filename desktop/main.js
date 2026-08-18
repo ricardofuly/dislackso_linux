@@ -167,8 +167,10 @@ function openDevWindow() {
 /* -------------------------------------------------- seletor de tela --- */
 
 let pickResolver = null;
+let lastSourceId = null;    // pra repetir sem áudio sem reabrir o seletor
+let forceNoAudioNext = false;
 
-/** Pede ao renderer que mostre nosso seletor e devolva a fonte escolhida. */
+/** Pede ao renderer que mostre nosso seletor e devolva a fonte + preferência de áudio. */
 function askRendererToPick(sources) {
   return new Promise((resolve) => {
     if (!win) return resolve(null);
@@ -179,10 +181,21 @@ function askRendererToPick(sources) {
   });
 }
 
-ipcMain.on('screen:picked', (_e, id) => {
+ipcMain.on('screen:picked', (_e, picked) => {
   const resolve = pickResolver;
   pickResolver = null;
-  if (resolve) resolve(id || null);
+  if (resolve) resolve(picked || null);
+});
+
+/**
+ * Chamado pelo renderer quando a captura com áudio falhou (ex.: "Could not
+ * start audio source" — driver de áudio que não sustenta loopback). Faz o
+ * próximo pedido de captura repetir a MESMA fonte já escolhida, mas sem
+ * pedir áudio, sem abrir o seletor de novo.
+ */
+ipcMain.handle('screen:retryNoAudio', () => {
+  forceNoAudioNext = !!lastSourceId;
+  return forceNoAudioNext;
 });
 
 function installDisplayMediaHandler() {
@@ -194,26 +207,38 @@ function installDisplayMediaHandler() {
         fetchWindowIcons: true,
       });
 
-      const payload = sources.map((s) => ({
-        id: s.id,
-        name: s.name,
-        type: s.id.startsWith('screen') ? 'screen' : 'window',
-        thumbnail: s.thumbnail.toDataURL(),
-        icon: s.appIcon ? s.appIcon.toDataURL() : null,
-      }));
+      let source;
+      let wantAudio;
 
-      const chosenId = await askRendererToPick(payload);
-      const source = sources.find((s) => s.id === chosenId);
+      if (forceNoAudioNext && lastSourceId) {
+        forceNoAudioNext = false;
+        source = sources.find((s) => s.id === lastSourceId);
+        wantAudio = false;
+      } else {
+        const payload = sources.map((s) => ({
+          id: s.id,
+          name: s.name,
+          type: s.id.startsWith('screen') ? 'screen' : 'window',
+          thumbnail: s.thumbnail.toDataURL(),
+          icon: s.appIcon ? s.appIcon.toDataURL() : null,
+        }));
+
+        const picked = await askRendererToPick(payload);
+        if (!picked || !picked.id) return callback();
+        source = sources.find((s) => s.id === picked.id);
+        wantAudio = picked.audio !== false;
+        lastSourceId = picked.id;
+      }
       if (!source) return callback();
 
       // 'loopback' captura o audio do sistema, mas só funciona junto de uma
       // tela inteira — pedir áudio ao capturar uma janela específica falha
       // com "Could not start audio source" (limitação do WASAPI loopback,
-      // que não sabe isolar o som de uma janela só).
+      // que não sabe isolar o som de uma janela só). Também respeita a
+      // escolha do usuário no seletor (compartilhar com ou sem áudio).
       const isFullScreen = source.id.startsWith('screen:');
-      callback(process.platform === 'win32' && isFullScreen
-        ? { video: source, audio: 'loopback' }
-        : { video: source });
+      const includeAudio = process.platform === 'win32' && isFullScreen && wantAudio;
+      callback(includeAudio ? { video: source, audio: 'loopback' } : { video: source });
     } catch (err) {
       console.error('[captura]', err);
       callback();
