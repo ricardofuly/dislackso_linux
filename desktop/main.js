@@ -114,7 +114,6 @@ function createWindow() {
   });
 
   win.show();
-  win.webContents.openDevTools({ mode: 'detach' });
   win.on('closed', () => { win = null; });
 
   // Links externos abrem no navegador do sistema, nunca dentro do app.

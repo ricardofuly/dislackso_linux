@@ -262,7 +262,10 @@ function createServer(options = {}) {
   app.use(express.static(PUBLIC_DIR, { extensions: ['html'] }));
 
   app.get('/api/health', (_req, res) => {
-    res.json({ ok: true, guilds: Object.keys(db.guilds).length, users: Object.keys(db.users).length });
+    // "supabase: false" com o servico no Render explica sozinho contas que
+    // somem: sem espelhamento remoto, os dados vivem so no disco efemero e
+    // qualquer redeploy comeca do zero.
+    res.json({ ok: true, guilds: Object.keys(db.guilds).length, users: Object.keys(db.users).length, supabase: useSupabase });
   });
 
   /**

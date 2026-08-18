@@ -232,6 +232,14 @@ const SettingsUI = {
     bio.placeholder = 'Fale um pouco sobre você…';
     bio.onchange = () => App.updateProfile({ bio: bio.value });
     box.appendChild(row({ title: 'Sobre mim', desc: 'Até 300 caracteres.', control: bio, stack: true }));
+
+    const sair = iconButton('logOut', 'Sair da conta', 'btn btn-ghost');
+    sair.onclick = () => confirmModal({
+      title: 'Sair da conta',
+      body: `Você precisará entrar de novo com nickname <b>${esc(me.username || me.name)}</b> e senha.`,
+      okText: 'Sair', danger: true,
+    }).then((ok) => { if (ok) logout(); });
+    box.appendChild(row({ title: 'Sessão', desc: 'Sai desta conta neste app.', control: sair }));
   },
 
   /* --------------------------------------------------------- perfil --- */

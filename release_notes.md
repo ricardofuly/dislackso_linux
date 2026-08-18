@@ -1,3 +1,18 @@
+### Versão 3.3.3
+
+* **Correção:** o app abria o DevTools do Chromium sozinho toda vez que iniciava — parecia
+  que ele "jogava" você numa tela de desenvolvedor sem pedir. Isso não acontece mais; o
+  DevTools continua disponível via F12 quando você realmente precisar dele.
+* **Correção:** com a tela de login travada (senha errada, por exemplo), não tinha como
+  chegar em Configurações pra checar ou baixar uma atualização. Agora tem um ícone de
+  engrenagem no canto da tela de login pra isso — com uma bolinha verde quando há versão nova.
+* **Correção:** o painel de desenvolvedor não tinha barra de rolagem, escondendo as opções
+  de baixo da janela. Corrigido.
+* **Novo:** botão "Sair da conta" nas configurações de conta — desloga de propósito, sem
+  precisar do painel de desenvolvedor. (O botão "Limpar dados locais" do painel de dev
+  continua existindo, mas é pra troubleshooting: ele apaga tudo — sessão, cache e
+  preferências — não é um botão de logout do dia a dia.)
+
 ### Versão 3.3.2
 
 * **Correção:** compartilhar uma **janela específica** (não a tela inteira) no app desktop

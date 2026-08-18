@@ -159,6 +159,15 @@ function establishSession(res) {
   }
 }
 
+/** Sai só desta conta — mantém tema/preferências, some com userId/token salvos. */
+function logout() {
+  LS.del('userId');
+  LS.del('authToken');
+  LS.del('guildsCache');
+  LS.del('profileCache');
+  location.reload();
+}
+
 function wireGate() {
   $('#gate-tab-login').onclick = () => setGateMode('login');
   $('#gate-tab-register').onclick = () => setGateMode('register');

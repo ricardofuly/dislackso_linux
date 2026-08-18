@@ -16,16 +16,20 @@ const Updater = {
 
   init() {
     if (!isDesktop() || !window.desktop.update) return;
+    const btn = $('#gate-update-btn');
+    if (btn) { btn.classList.remove('hidden'); btn.onclick = () => this.open(); }
 
     window.desktop.update.onChange((state) => {
       this.state = state;
       this.paint();
       this.notify();
+      this.syncGateButton();
     });
 
     window.desktop.update.state().then((state) => {
       this.state = state;
       this.paint();
+      this.syncGateButton();
     });
 
     // Procura sozinho pouco depois de abrir, se o usuário deixou ligado.
@@ -48,6 +52,16 @@ const Updater = {
   },
 
   isOpen() { return !$('#updater').classList.contains('hidden'); },
+
+  /** Bolinha verde no botão da tela de login, pra dar pra ver que tem atualização sem estar logado. */
+  syncGateButton() {
+    const btn = $('#gate-update-btn');
+    if (!btn) return;
+    const show = ['available', 'downloading', 'ready'].includes(this.state.status);
+    let dot = btn.querySelector('.dot');
+    if (show && !dot) btn.insertAdjacentHTML('beforeend', '<span class="dot"></span>');
+    if (!show && dot) dot.remove();
+  },
 
   open() {
     $('#updater').classList.remove('hidden');

@@ -6,7 +6,11 @@
 <link rel="stylesheet" href="../public/css/theme.css">
 <link rel="stylesheet" href="../public/css/app.css">
 <style>
-  body { background: var(--bg-3); color: var(--text); min-height: 100vh; }
+  /* app.css trava o scroll de html/body (o app principal usa layout de tela
+     cheia, sem rolagem) — aqui é o oposto: o conteúdo é mais alto que a
+     janela, então precisa sobrescrever isso pra rolar de verdade. */
+  html, body { height: auto; min-height: 100%; overflow-y: auto; }
+  body { background: var(--bg-3); color: var(--text); }
   .dev-wrap { max-width: 640px; margin: 0 auto; padding: 28px 24px 60px; }
   .dev-head { display: flex; align-items: center; gap: 10px; margin-bottom: 22px; }
   .dev-head h1 { font-size: 19px; color: var(--bright); }
