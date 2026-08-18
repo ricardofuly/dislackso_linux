@@ -26,10 +26,18 @@ ligado para preservar os dados.
 
 ## Transmissão para redes difíceis
 
-O app já usa STUN público. Algumas operadoras e CGNAT exigem TURN, caso em que
-a chamada pode conectar mas a tela não chega a uma pessoa específica. Configure
-um serviço TURN e preencha `TURN_URL`, `TURN_USER` e `TURN_PASS` no Render;
-o servidor entrega essas credenciais aos clientes ao entrar na sala.
+O app já usa STUN público e, desde a v3.3.6, inclui por padrão um retransmissor
+TURN público e gratuito (Open Relay Project) — sem precisar configurar nada,
+isso já ajuda bastante quem está atrás de CGNAT ou NAT simétrico (comum em
+internet via rádio, 4G/5G, e em algumas operadoras). É um serviço best-effort,
+compartilhado publicamente e sem garantia de disponibilidade.
+
+Para um grupo que depende de conexão estável o tempo todo, vale configurar um
+TURN próprio: preencha `TURN_URL`, `TURN_USER` e `TURN_PASS` no Render (um
+serviço como Metered, Twilio ou Xirsys tem plano gratuito) — o servidor passa
+a entregar essas credenciais aos clientes também, além do retransmissor
+público. Quanto mais opções de TURN, maior a chance de alguém conseguir
+conectar mesmo numa rede complicada.
 
 ## Deploy automático a cada Release
 

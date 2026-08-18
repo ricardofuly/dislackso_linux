@@ -11,7 +11,7 @@ sua tela.
 
 ## Download
 
-[**Baixar DiSlackso para Windows**](https://github.com/spikeleez/dislackso/releases/latest/download/DiSlackso-Setup-3.3.5.exe) | [Versão Portátil (.zip)](https://github.com/spikeleez/dislackso/releases/latest/download/DiSlackso-portable-3.3.5.zip)
+[**Baixar DiSlackso para Windows**](https://github.com/spikeleez/dislackso/releases/latest/download/DiSlackso-Setup-3.3.6.exe) | [Versão Portátil (.zip)](https://github.com/spikeleez/dislackso/releases/latest/download/DiSlackso-portable-3.3.6.zip)
 
 Você pode instalar o app no seu computador e se conectar diretamente aos servidores na nuvem com persistência de dados.
 
@@ -53,7 +53,7 @@ direto e entram com nickname e senha — o app já sabe pra qual servidor ir.
 npm run build
 ```
 
-Gera `dist/DiSlackso-Setup-3.3.5.exe` (~79 MB). Instalador comum: escolhe pasta, cria atalho,
+Gera `dist/DiSlackso-Setup-3.3.6.exe` (~79 MB). Instalador comum: escolhe pasta, cria atalho,
 desinstala pelo Painel de Controle.
 
 > **Sobre o erro "Cannot create symbolic link"**
@@ -168,7 +168,13 @@ esperado — *Avançado → Prosseguir*.
 ### Se alguém ficar sem imagem
 
 Em quase toda rede doméstica o P2P conecta direto. Falha em CGNAT e NAT simétrico (comum em
-internet via rádio e 4G/5G). O conserto é um servidor TURN:
+internet via rádio e 4G/5G) — quem tem esse problema fica preso em "conectando…"; a partir
+da v3.3.6 o app avisa depois de alguns segundos que a rede provavelmente está bloqueando a
+conexão direta.
+
+O app já inclui um retransmissor TURN público gratuito como reforço automático (sem precisar
+configurar nada), mas ele é best-effort. Pra garantir conexão estável, configure seu próprio
+TURN:
 
 ```bash
 TURN_URL=turn:host:3478 TURN_USER=usuario TURN_PASS=senha npm start

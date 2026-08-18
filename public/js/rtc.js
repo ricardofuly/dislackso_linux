@@ -126,11 +126,29 @@ class Peer {
     this.pc.ontrack = this.onTrack;
     this.pc.onconnectionstatechange = () => {
       this.engine.emit('peerchange', this);
-      if (this.pc.connectionState === 'failed') {
+      if (this.pc.connectionState === 'connected') {
+        this.stuckWarned = false; // pode falhar e reconectar de novo depois
+      } else if (this.pc.connectionState === 'failed') {
         console.warn('[rtc] conexão falhou com', this.user.name, '- reiniciando ICE');
         try { this.pc.restartIce(); } catch {}
       }
     };
+
+    // Sem isso, alguém atrás de CGNAT/NAT simétrico (comum em internet via
+    // rádio/4G/5G) fica preso em "conectando…" pra sempre, sem nenhuma pista
+    // do porquê — o restartIce() acima tenta de novo silenciosamente. Depois
+    // de um tempo razoável sem sucesso, avisa o que está acontecendo.
+    this.stuckWarned = false;
+    this.stuckTimer = setTimeout(() => {
+      const state = this.pc.connectionState;
+      if (state !== 'connected' && state !== 'completed' && !this.stuckWarned) {
+        this.stuckWarned = true;
+        this.engine.emit('notice',
+          `Demorando pra conectar com ${this.user.name} — provavelmente a rede de um dos dois `
+          + 'bloqueia conexão direta. Tentando por um retransmissor; se continuar travado, '
+          + 'considere configurar um servidor TURN (veja DEPLOY.md).');
+      }
+    }, 20000);
 
     this.publishLocalTracks();
 
@@ -294,6 +312,7 @@ class Peer {
   }
 
   close() {
+    clearTimeout(this.stuckTimer);
     try { this.pc.close(); } catch {}
     this.streams.clear();
   }

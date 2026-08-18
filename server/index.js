@@ -243,7 +243,20 @@ function createServer(options = {}) {
   /* -------------------------------------------------------------- ICE --- */
 
   const iceServers = [
-    { urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'] },
+    { urls: [
+        'stun:stun.l.google.com:19302',
+        'stun:stun1.l.google.com:19302',
+        'stun:stun.cloudflare.com:3478',
+      ] },
+    // Retransmissor TURN público e gratuito (Open Relay Project), sem precisar de
+    // cadastro — cobre quem está atrás de CGNAT/NAT simétrico (comum em internet
+    // via rádio/4G/5G) enquanto nenhum TURN próprio for configurado. As portas 443
+    // (inclusive por TCP) ajudam em redes que bloqueiam UDP. É best-effort: pra um
+    // grupo que depende disso o tempo todo, configure seu próprio TURN
+    // (TURN_URL/TURN_USER/TURN_PASS) — ver DEPLOY.md.
+    { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' },
+    { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
+    { urls: 'turn:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' },
   ];
   const turnUrl = options.turnUrl || process.env.TURN_URL;
   if (turnUrl) {

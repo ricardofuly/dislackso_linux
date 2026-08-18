@@ -1,3 +1,16 @@
+### Versão 3.3.6
+
+* **Melhoria de conectividade:** amigos atrás de CGNAT ou NAT simétrico (comum em internet
+  via rádio, 4G/5G, e algumas operadoras) ficavam presos em "conectando…" pra sempre, sem
+  nenhuma pista do motivo. Duas mudanças:
+  - O app agora inclui, por padrão, um retransmissor **TURN público e gratuito** (sem
+    precisar configurar nada) como reforço quando a conexão direta não é possível — além do
+    STUN público que já existia.
+  - Depois de ~20s sem conseguir conectar com alguém, o app avisa que a rede provavelmente
+    está bloqueando a conexão direta, em vez de ficar tentando de novo em silêncio pra sempre.
+  - Pra um grupo que depende de conexão estável o tempo todo, configurar seu próprio TURN
+    continua sendo o mais confiável — ver [DEPLOY.md](DEPLOY.md#transmissão-para-redes-difíceis).
+
 ### Versão 3.3.5
 
 * **Correção crítica:** o botão "Reiniciar e instalar" da tela de atualização não fazia
