@@ -52,7 +52,13 @@ export function startConnection(): void {
 
   /* ------------------------------------------------------- servidores --- */
 
-  socket.on('guild:update', (guild) => useGuilds.getState().upsert(guild));
+  socket.on('guild:update', (guild) => {
+    useGuilds.getState().upsert(guild);
+    const room = useRoom.getState().room;
+    if (room?.guildId === guild.id && !guild.channels.some((c) => c.id === room.channelId)) {
+      void leaveVoice({ silent: true });
+    }
+  });
 
   socket.on('guild:deleted', ({ guildId }) => {
     useGuilds.getState().remove(guildId);

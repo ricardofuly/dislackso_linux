@@ -90,6 +90,15 @@ function createPresence({ io, store, publicUser, publicGuild }) {
     pushPresence(guildOfRoom(room));
   }
 
+  /** Remove todos de uma sala de voz — usado quando o canal deixa de existir. */
+  function evictVoiceRoom(guildId, channelId) {
+    const room = voiceRoom(guildId, channelId);
+    for (const sid of io.sockets.adapter.rooms.get(room) ?? []) {
+      const sock = io.sockets.sockets.get(sid);
+      if (sock) leaveVoice(sock);
+    }
+  }
+
   return {
     sessions,
     guildRoom,
@@ -102,6 +111,7 @@ function createPresence({ io, store, publicUser, publicGuild }) {
     pushGuild,
     guildsOf,
     leaveVoice,
+    evictVoiceRoom,
   };
 }
 

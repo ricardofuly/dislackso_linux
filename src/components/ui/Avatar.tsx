@@ -36,7 +36,7 @@ export function Avatar({ user, size = 'md', className, speaking }: AvatarProps) 
         'font-semibold text-white select-none',
         SIZES[size],
         speaking && 'ring-2 ring-green ring-offset-2 ring-offset-bg-2',
-        'transition-[box-shadow] duration-(--duration-fast)',
+        'transition-shadow duration-(--duration-fast)',
         className,
       )}
       style={src ? undefined : { background: user?.color ?? 'var(--color-accent)' }}

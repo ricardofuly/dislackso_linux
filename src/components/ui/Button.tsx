@@ -61,8 +61,8 @@ export function IconButton({ label, active, className, children, ...rest }: Icon
       aria-label={label}
       aria-pressed={active}
       className={cn(
-        'inline-grid size-8 place-items-center rounded-[var(--radius-sm)] text-dim',
-        'transition-[background-color,color,transform] duration-(--duration-fast) ease-(--ease-glass)',
+        'inline-grid size-8 place-items-center rounded-sm text-dim',
+        'transition-[background-color,color,transform] duration-(--duration-fast) ease-glass',
         'hover:bg-hover hover:text-bright active:scale-90',
         active && 'bg-accent-soft text-accent',
         className,

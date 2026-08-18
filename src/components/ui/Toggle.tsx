@@ -18,14 +18,14 @@ export function Toggle({ checked, onChange, label, disabled }: ToggleProps) {
       aria-label={label}
       className={cn(
         'relative h-6 w-11 shrink-0 rounded-full border border-line transition-colors',
-        'duration-(--duration-med) ease-(--ease-glass) disabled:opacity-50',
+        'duration-(--duration-med) ease-glass disabled:opacity-50',
         checked ? 'bg-accent' : 'bg-bg-4',
       )}
     >
       <Switch.Thumb
         className={cn(
           'block size-4.5 translate-x-0.75 rounded-full bg-white shadow-(--shadow-soft)',
-          'transition-transform duration-(--duration-med) ease-(--ease-bounce)',
+          'transition-transform duration-(--duration-med) ease-bounce',
           'data-[state=checked]:translate-x-5.75',
         )}
       />
