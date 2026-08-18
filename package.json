@@ -64,7 +64,8 @@
       {
         "provider": "github",
         "owner": "spikeleez",
-        "repo": "dislackso"
+        "repo": "dislackso",
+        "releaseType": "release"
       }
     ],
     "files": [
