@@ -76,15 +76,32 @@ function ask(event, payload) {
 /** Conta anônima de antes do login existir: tem userId salvo, mas sem token. */
 const legacyUserId = () => (LS.get('authToken') ? null : LS.get('userId'));
 
+/**
+ * Some com o loading inicial. É chamado tanto quando o login automático dá
+ * certo (hideGate) quanto quando ele falha e sobra pro usuário entrar na
+ * mão (showGate) — nos dois casos o "carregando" acabou.
+ */
+function hideBootLoading() {
+  $('#boot-loading').classList.add('hidden');
+}
+
+/**
+ * Mostra a tela de entrada sempre na aba "Entrar", nunca pulando sozinho
+ * pra "Criar conta" — mesmo quando o motivo de estar aqui foi um token
+ * salvo que acabou de ser invalidado. A aba de cadastro continua existindo
+ * e clicável pra quem realmente precisa dela (conta antiga sem senha).
+ */
 function showGate() {
+  hideBootLoading();
   $('#gate').classList.remove('hidden');
   const saved = LS.get('name', '');
   if (saved) $('#gate-username').value = saved.replace(/[^a-zA-Z0-9_]/g, '').slice(0, 20);
-  setGateMode(legacyUserId() ? 'register' : 'login');
+  setGateMode('login');
   setTimeout(() => $('#gate-username').focus(), 40);
 }
 
 function hideGate() {
+  hideBootLoading();
   $('#gate').classList.add('hidden');
 }
 
@@ -201,6 +218,7 @@ function connect() {
         LS.del('authToken');
         showGate();
       } else {
+        showGate();
         toast('Falha ao entrar: ' + err.message);
       }
     }
@@ -1079,7 +1097,13 @@ Voice.on('qualitydowngraded', () => renderControls());
 
 async function joinVoice(guildId, channelId) {
   if (!S.me) return toast('Ainda conectando… tente de novo em um instante.');
-  if (S.voice && S.voice.guildId === guildId && S.voice.channelId === channelId) return;
+  if (S.voice && S.voice.guildId === guildId && S.voice.channelId === channelId) {
+    // Já está nessa sala — só volta pro palco (a transmissão "some" quando
+    // se abre um canal de texto por cima; clicar na sala de novo é o jeito
+    // natural de voltar a vê-la, então isso não pode ser um no-op).
+    if (S.activeTextChannelId) { S.activeTextChannelId = null; renderAll(); }
+    return;
+  }
   if (S.voice) await leaveVoice({ silent: true });
 
   try {
@@ -1470,6 +1494,12 @@ async function boot() {
   }
 
   connect();
+  // Se a conexão inicial travar (servidor fora do ar, rede lenta…), não
+  // trava o usuário atrás do loading pra sempre — deixa entrar na mão.
+  setTimeout(() => {
+    if (!$('#boot-loading').classList.contains('hidden')) showGate();
+  }, 8000);
+
   // O status de conexão de cada par muda sem evento; refresca de leve.
   setInterval(() => { if (S.voice) renderStageContent(); }, 2000);
 }

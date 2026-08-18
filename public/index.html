@@ -143,8 +143,13 @@
   </div>
 </div>
 
+<!-- loading inicial: cobre a tela enquanto tenta logar sozinho com a sessão salva -->
+<div id="boot-loading" class="boot-loading">
+  <img src="loader.png" width="48" height="48" alt="" class="boot-spinner">
+</div>
+
 <!-- tela de entrada -->
-<div id="gate" class="gate">
+<div id="gate" class="gate hidden">
   <button id="gate-update-btn" class="icon-btn gate-update-btn hidden" title="Configurações e atualizações">
     <span data-icon="settings" data-size="20"></span>
   </button>

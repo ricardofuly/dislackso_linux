@@ -294,10 +294,10 @@ const SettingsUI = {
 
     box.appendChild(row({
       title: 'Foto de perfil',
-      desc: 'PNG, JPG, WEBP ou GIF animado. Até 8 MB.',
+      desc: 'PNG, JPG, WEBP ou GIF animado. Até 12 MB.',
       stack: true,
       control: uploadBlock({
-        kind: 'avatar', current: me.avatar, maxMB: 8, label: 'Enviar imagem',
+        kind: 'avatar', current: me.avatar, maxMB: 12, label: 'Enviar imagem',
         preview: { bg: me.color, text: initials(me.name) },
       }),
     }));

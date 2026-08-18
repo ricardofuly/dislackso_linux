@@ -1,3 +1,24 @@
+### Versão 3.5.3
+
+* **Correção — voltar da conversa pra transmissão:** depois de abrir um canal de texto enquanto
+  estava numa sala de voz, não tinha como ver a transmissão de novo — clicar na própria sala de
+  voz (que continuava marcada como ativa) não fazia nada, já que o app entendia que você "já
+  estava lá" e ignorava o clique. Agora esse clique sempre volta pro palco.
+* **Correção — fluxo de entrada:** o app entrava direto na tela de login e, se a sessão salva
+  tivesse expirado, pulava sozinho pra aba "Criar conta" — sem deixar digitar a senha pra tentar
+  de novo, obrigando a trocar de aba na mão toda vez. Agora existe uma tela de carregamento
+  enquanto o login automático é tentado nos bastidores; se ele falhar por qualquer motivo, a
+  tela de entrada sempre abre na aba **Entrar** (a de criar conta continua existindo, só não
+  abre mais sozinha).
+* **Melhoria — sons de feedback:** mutar e desmutar o microfone agora tocam um som curto, como
+  entrar/sair da sala e as outras notificações já tocavam. Todos esses sons também ficaram bem
+  mais perceptíveis — o volume estava tão baixo que na prática passava despercebido.
+* **Correção — foto de perfil:** o limite de tamanho da foto de perfil era menor que o do banner
+  (8 MB contra 12 MB) sem necessidade técnica — fotos de celular passam de 8 MB com facilidade,
+  e o envio era recusado. Agora os dois aceitam até 12 MB, o mesmo que o servidor já suportava.
+* **Novo — ícone de carregamento:** a nova tela de carregamento inicial usa um ícone (moinho de
+  vento) em branco, girando enquanto o app tenta entrar sozinho com a sessão salva.
+
 ### Versão 3.5.2
 
 * **Novo — ícone do app:** o DiSlackso ganhou um ícone novo (o "D" em balão de fala, gradiente
