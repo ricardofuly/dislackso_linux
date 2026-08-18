@@ -90,13 +90,25 @@ export interface ProfilePatch {
   banner?: string;
 }
 
-/** Um traço de anotação, em coordenadas normalizadas (0..1). */
-export interface AnnotStroke {
-  id: string;
+/** As três ferramentas de rabisco. Os nomes viajam no socket — não traduzir. */
+export type AnnotTool = 'caneta' | 'marcador' | 'seta';
+
+/** Um ponto normalizado (0..1) em relação ao QUADRO DE VÍDEO, não ao elemento. */
+export type AnnotPoint = [x: number, y: number];
+
+/**
+ * Um pedaço de traço, como viaja no socket. Mandamos só os pontos novos
+ * desde o último envio; a seta é a exceção (`replace`), porque ela só tem
+ * começo e fim e remontá-la é mais barato que costurar deltas.
+ */
+export interface AnnotStrokePatch {
+  /** sid de quem está transmitindo a tela rabiscada. */
   target: string;
-  tool: 'pen' | 'arrow' | 'rect' | 'highlight';
+  id: string;
+  tool: AnnotTool;
   color: string;
   size: number;
-  points: number[];
+  pts: AnnotPoint[];
+  replace?: boolean;
   end?: boolean;
 }

@@ -1,5 +1,5 @@
 import type {
-  AdminAnnouncement, AnnotStroke, ChatMessage, Guild, PeerInfo,
+  AdminAnnouncement, AnnotStrokePatch, ChatMessage, Guild, PeerInfo,
   Presence, ProfilePatch, PublicUser, SessionPayload, VoiceState,
 } from '@/types/api';
 
@@ -40,7 +40,7 @@ export interface ClientEvents {
   'message:send': (p: { guildId: string; channelId: string; text: string }, ack: Ack<{ message: ChatMessage }>) => void;
 
   'screen:preview': (p: { dataUrl: string | null }) => void;
-  'annot:draw': (p: AnnotStroke) => void;
+  'annot:draw': (p: AnnotStrokePatch) => void;
   'annot:clear': (p: { target: string }) => void;
 }
 
@@ -60,7 +60,7 @@ export interface ServerEvents {
   'message:new': (p: { guildId: string; channelId: string; message: ChatMessage }) => void;
   'screen:preview': (p: { from: string; dataUrl: string | null }) => void;
 
-  'annot:draw': (p: AnnotStroke & { from: string }) => void;
+  'annot:draw': (p: AnnotStrokePatch & { from: string }) => void;
   'annot:clear': (p: { from: string; target: string }) => void;
 
   'admin:message': (p: AdminAnnouncement) => void;

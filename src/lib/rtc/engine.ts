@@ -83,6 +83,11 @@ export class VoiceEngine extends Emitter<VoiceEvents> {
     onCongested: () => this.downgradeQuality(),
   });
 
+  /** O meu id de socket nesta sessão — é assim que os outros me identificam. */
+  get mySid(): string {
+    return this.sid;
+  }
+
   configure(sid: string, iceServers: RTCIceServer[]): void {
     this.sid = sid;
     this.iceServers = iceServers;
