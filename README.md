@@ -283,47 +283,73 @@ Trocar de microfone não derruba a conexão: a faixa é substituída no lugar.
 
 ### Interface
 
-Os ícones são SVG inline, na mesma grade 24×24 com traço de 2 e `currentColor` — nada de
-emoji. Emoji muda de desenho, de tamanho e de linha-base conforme o sistema e a fonte, e era
-a origem dos desalinhamentos em botões.
+Os ícones são SVG inline (Lucide), na mesma grade 24×24 com traço de 2 e `currentColor` —
+nada de emoji. Emoji muda de desenho, de tamanho e de linha-base conforme o sistema e a
+fonte, e era a origem dos desalinhamentos em botões.
 
-O layout responde em três pontos de quebra: em 1080px as colunas laterais encolhem; em 880px
-os rótulos dos controles somem e sobra o ícone; em 680px a navegação das configurações vira
-só ícones e as linhas de opção empilham. Janela baixa (menos de 560px) esconde a tira de
-miniaturas para o palco não sumir.
+O layout encolhe antes de quebrar: abaixo de 1280px a coluna de canais estreita, abaixo de
+1180px a de membros também, abaixo de 768px a navegação das configurações vira só ícones, e
+os rótulos dos controles da chamada somem antes disso — o palco é sempre o último a ceder
+espaço.
 
 ---
 
 ## Como está montado
 
+A 4.0 é a mesma interface compilada de dois jeitos: `dist/web`, que o Express serve, e
+`dist/desktop`, que o Electron carrega. Um código só, dois empacotamentos.
+
 ```
-server/index.js        Express + Socket.IO: contas, servidores, convites, perfis, signaling
+index.html             entrada do Vite
+src/main.tsx           monta o React
+src/app/               raiz, ponte com o servidor, ponte com o motor de mídia
+src/components/ui/     primitivas: vidro, botão, modal, menu, switch, slider, aviso
+src/components/layout/ trilho de servidores, canais, barra de título
+src/components/stage/  palco: grade, destaque, tiles, controles, HUD de transmissão
+src/components/chat/   canal de texto
+src/components/members/ lista de membros e menu de usuário
+src/components/settings/ uma seção de configuração por arquivo
+src/components/annotate/ camada e barra de rabisco
+src/features/          ações por assunto (auth, servidores, mensagens, voz, perfil)
+src/stores/            estado em Zustand (sessão, servidores, sala, preferências)
+src/lib/rtc/           motor de mídia: negociação, malha, microfone, tela, prévia, stats
+src/lib/annot/         geometria, desenho e envio dos traços
+src/lib/socket/        cliente tipado; events.ts é o contrato com o servidor
+src/styles/            tokens, temas, vidro líquido, movimento
+static/                arquivos copiados como estão (favicon, loader)
+
+server/index.js        monta o servidor
+server/db/             banco em JSON, formas públicas e espelho no Supabase
+server/http/           health, upload e broadcast
+server/socket/         presença, auth, perfil, servidores, voz, mensagens
 server.js              sobe o servidor sozinho (modo navegador)
+
 desktop/main.js        Electron: janela, captura, atualização, painel de desenvolvedor
+desktop/app-protocol.js serve o bundle por app:// (módulos ES não carregam de file://)
+desktop/migrate-storage.js traz sessão e preferências da origem antiga
 desktop/preload.js     ponte segura entre a interface e o Electron
 desktop/dev-window.html/js  janela de desenvolvedor (protegida por senha)
-desktop/dev-preload.js ponte isolada da janela de desenvolvedor
-public/css/theme.css   tokens de design e os quatro temas
-public/css/app.css     layout e componentes
-public/css/motion.css  animações
-public/js/config.js    endereço do servidor na nuvem (Render)
-public/js/icons.js     ícones em SVG inline (sem emoji, sem CDN)
-public/js/util.js      DOM, avisos, modais, upload, cache local
-public/js/settings.js  preferências e sua aplicação no documento
-public/js/rtc.js       motor WebRTC: negociação, codecs, bitrate, microfone
-public/js/annotate.js  camada de rabisco
-public/js/updater.js   tela de atualização do aplicativo
-public/js/screens.js   configurações, perfil, seletor de telas
-public/js/app.js       login, interface, salas, membros, destaque
-scripts/gen-cert.js    certificado HTTPS local
-scripts/gen-icon.js    ícone PNG + ICO, sem dependência de imagem
-scripts/prep-build.js  conserta o cache do electron-builder no Windows
-scripts/pack-portable.js  monta a versão portátil
-.github/workflows/render-deploy.yml  redeploya o Render a cada Release
+
+docs/CONTRATO.md       o protocolo, o formato do banco e as chaves do localStorage
+scripts/               certificado HTTPS, ícones, empacotamento
 data/                  banco (db.json) e imagens enviadas, quando sem Supabase
 ```
 
-Os detalhes que fazem a qualidade, em `public/js/rtc.js`:
+Nenhum arquivo passa de 200 linhas. Não é estética: é o que faz mexer numa parte não
+exigir ler o resto.
+
+### Rodando em desenvolvimento
+
+```
+npm run server    # API na porta 3000
+npm run dev       # interface na 5173, com proxy para a API
+```
+
+Para o app de PC, `npm run desktop` (compila e abre a janela).
+
+### Os detalhes que fazem a qualidade
+
+Em `src/lib/rtc/`:
 
 - **VP9** preferido sobre VP8 — muito melhor em texto e interface parada.
 - **`degradationPreference: 'maintain-resolution'`** — o padrão do navegador é derrubar a
@@ -337,6 +363,9 @@ Os detalhes que fazem a qualidade, em `public/js/rtc.js`:
   descartada.
 - **Grafo de Web Audio no microfone** — volume de entrada e medidor de voz funcionam, e
   trocar de aparelho vira um `replaceTrack`, sem renegociar.
+- **A tela não vai para ninguém sem pedido** — todos veem uma miniatura leve, e só quem
+  clica em assistir recebe o vídeo. Em 1080p60 para quatro pessoas, a diferença é entre
+  32 Mbps de subida e quase nada.
 
 ## Sobre segurança
 

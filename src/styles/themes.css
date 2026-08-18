@@ -1,0 +1,95 @@
+/* ==========================================================================
+   themes.css — os quatro temas do DiSlackso
+   Cada bloco só redefine as variáveis de superfície e texto: raio, tempo,
+   vidro e acento são compartilhados e vêm de tokens.css.
+   ========================================================================== */
+
+/* O tema escuro já é o padrão em tokens.css; repetimos o seletor para que
+   voltar a ele depois de outro tema funcione sem recarregar a página. */
+[data-theme='escuro'] {
+  --color-bg-0: #17181b;
+  --color-bg-1: #1f2023;
+  --color-bg-2: #2b2d31;
+  --color-bg-3: #313338;
+  --color-bg-4: #3a3c43;
+  --color-field: #131417;
+  --color-tile: #101114;
+  --color-line: rgb(255 255 255 / 0.07);
+  --color-line-strong: rgb(255 255 255 / 0.13);
+  --color-hover: rgb(255 255 255 / 0.05);
+  --color-active: rgb(255 255 255 / 0.09);
+  --color-text: #dbdee1;
+  --color-dim: #969ba3;
+  --color-bright: #f7f8f8;
+  color-scheme: dark;
+}
+
+[data-theme='meianoite'] {
+  --color-bg-0: #000000;
+  --color-bg-1: #08090a;
+  --color-bg-2: #101114;
+  --color-bg-3: #141519;
+  --color-bg-4: #1e1f24;
+  --color-field: #000000;
+  --color-tile: #000000;
+  --color-line: rgb(255 255 255 / 0.09);
+  --color-line-strong: rgb(255 255 255 / 0.16);
+  --color-hover: rgb(255 255 255 / 0.06);
+  --color-active: rgb(255 255 255 / 0.11);
+  --color-text: #d6d9dd;
+  --color-dim: #8b9099;
+  --color-bright: #ffffff;
+  --glass-rim: rgb(255 255 255 / 0.2);
+  --shadow-soft: 0 2px 8px rgb(0 0 0 / 0.6);
+  --shadow-lift: 0 12px 44px rgb(0 0 0 / 0.8);
+  --shadow-glass: 0 8px 36px rgb(0 0 0 / 0.7), 0 1px 2px rgb(0 0 0 / 0.6);
+  color-scheme: dark;
+}
+
+[data-theme='nebula'] {
+  --color-bg-0: #14121f;
+  --color-bg-1: #1a1729;
+  --color-bg-2: #221d34;
+  --color-bg-3: #282242;
+  --color-bg-4: #322a4f;
+  --color-field: #100e1a;
+  --color-tile: #0d0a17;
+  --color-line: rgb(180 160 255 / 0.12);
+  --color-line-strong: rgb(180 160 255 / 0.22);
+  --color-hover: rgb(255 255 255 / 0.06);
+  --color-active: rgb(255 255 255 / 0.11);
+  --color-text: #ded9f0;
+  --color-dim: #9d95bd;
+  --color-bright: #ffffff;
+  --glass-rim: rgb(200 180 255 / 0.22);
+  --shadow-soft: 0 2px 10px rgb(20 5 50 / 0.45);
+  --shadow-lift: 0 14px 44px rgb(20 5 50 / 0.6);
+  --shadow-glass: 0 10px 40px rgb(20 5 50 / 0.55), 0 1px 2px rgb(0 0 0 / 0.4);
+  color-scheme: dark;
+}
+
+[data-theme='claro'] {
+  --color-bg-0: #e3e5e8;
+  --color-bg-1: #f2f3f5;
+  --color-bg-2: #f7f8f9;
+  --color-bg-3: #ffffff;
+  --color-bg-4: #e8eaed;
+  --color-field: #ffffff;
+  --color-tile: #1c1d21;
+  --color-line: rgb(0 0 0 / 0.08);
+  --color-line-strong: rgb(0 0 0 / 0.15);
+  --color-hover: rgb(0 0 0 / 0.04);
+  --color-active: rgb(0 0 0 / 0.08);
+  --color-text: #313338;
+  --color-dim: #5f6570;
+  --color-bright: #06070a;
+  /* No claro o vidro clareia em vez de escurecer: o brilho vira branco e a
+     sombra interna quase some, senão a superfície fica suja. */
+  --glass-sheen: rgb(255 255 255 / 0.55);
+  --glass-rim: rgb(255 255 255 / 0.85);
+  --glass-shade: rgb(0 0 0 / 0.07);
+  --shadow-soft: 0 2px 8px rgb(0 0 0 / 0.1);
+  --shadow-lift: 0 12px 40px rgb(0 0 0 / 0.18);
+  --shadow-glass: 0 8px 32px rgb(0 0 0 / 0.12), 0 1px 2px rgb(0 0 0 / 0.08);
+  color-scheme: light;
+}

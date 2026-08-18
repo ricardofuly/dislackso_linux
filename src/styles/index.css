@@ -1,0 +1,9 @@
+/* Ordem importa: tokens definem as variáveis, temas as sobrescrevem, e só
+   então vêm as camadas que as consomem. */
+@import 'tailwindcss';
+
+@import './tokens.css';
+@import './themes.css';
+@import './base.css';
+@import './glass.css';
+@import './motion.css';

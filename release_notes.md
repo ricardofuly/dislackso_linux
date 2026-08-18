@@ -1,3 +1,63 @@
+### Versão 4.0.0
+
+Uma reescrita da base do app. Por fora, o DiSlackso faz exatamente o que fazia — nada de
+servidores, conversas, perfis ou preferências se perde. Por dentro, quase tudo mudou de
+lugar, e é isso que faz as próximas mudanças serem viáveis.
+
+**Por que existiu**
+
+O 3.5 tinha arquivos de mil e quinhentas linhas em que interface, estado e rede se
+misturavam. Mexer numa parte significava ler o resto, e cada correção tinha chance real de
+quebrar outra coisa. A 4.0 quebra isso em 99 arquivos, nenhum passando de 200 linhas.
+
+**Interface**
+
+* **Vidro líquido de verdade.** As superfícies agora têm aro (luz em cima, sombra embaixo,
+  por dentro) e um brilho especular que acompanha o ponteiro — é o que dá a sensação de
+  vidro espesso em vez de fundo translúcido. Onde o navegador permite, entra também uma
+  refração real, que curva o que passa por baixo.
+* **Movimento que carrega significado.** O marcador do trilho desliza entre servidores em
+  vez de piscar de um lado para o outro. Os tiles deslizam entre a grade e o destaque em
+  vez de sumir e reaparecer. As linhas de participante entram e saem por altura.
+* **Avisos empilham.** Antes, um aviso novo apagava o anterior, e mensagens que importam
+  ("fulano começou a transmitir") sumiam antes de serem lidas.
+* **Os avatares pararam de piscar.** A presença chega toda vez que alguém abre ou fecha o
+  microfone — várias vezes por minuto numa conversa. A lista agora reaproveita as linhas em
+  vez de recriá-las, e a foto não recarrega.
+
+**Correções de interface**
+
+Modais, menus e dicas passaram a se apoiar em primitivas acessíveis, e com isso um conjunto
+inteiro de defeitos deixou de existir por construção:
+
+* menu de botão direito que abria para fora da tela perto da borda;
+* modal que não fechava no Escape, ou que deixava o foco escapar para trás dele;
+* dois modais empilhados sem saber qual respondia ao teclado;
+* rolagem do fundo continuando enquanto um modal estava aberto.
+
+**Robustez**
+
+* **Rede que bloqueia WebSocket.** Em rede de escola ou empresa o app ficava parado na tela
+  de entrada, sem explicação. Agora ele cai para long-polling sozinho.
+* **App de PC em contexto seguro.** A interface passou a ser servida por um esquema próprio
+  (`app://`) em vez de `file://`. Além de ser o que permite carregar o bundle novo, isso dá
+  ao app um contexto seguro de verdade — microfone e captura de tela deixam de depender de
+  exceções que o Electron abria para arquivos locais.
+* **Sua sessão sobrevive à atualização.** Como o armazenamento é separado por origem, mudar
+  para `app://` deslogaria todo mundo e zeraria o tema. O app lê a origem antiga no primeiro
+  boot e traz sessão e preferências.
+* **Perfis não somem mais depois de um redeploy.** Havia um caminho em que, ao restaurar o
+  estado do Supabase, todos os usuários apareceriam como "Desconhecido".
+
+**Por baixo**
+
+TypeScript em modo estrito no app inteiro, com os eventos de socket tipados um a um — o
+tipo de erro em que se manda o campo errado para o servidor agora não compila. O motor de
+mídia virou dez módulos (negociação, malha de pares, microfone, tela, prévia,
+congestionamento, diagnóstico) e o servidor, catorze.
+
+Nada do protocolo mudou: um app 3.x instalado continua conversando com este servidor.
+
 ### Versão 3.5.3
 
 * **Correção — voltar da conversa pra transmissão:** depois de abrir um canal de texto enquanto
