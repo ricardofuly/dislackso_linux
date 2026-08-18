@@ -272,7 +272,7 @@ function installDisplayMediaHandler() {
       // que não sabe isolar o som de uma janela só). Também respeita a
       // escolha do usuário no seletor (compartilhar com ou sem áudio).
       const isFullScreen = source.id.startsWith('screen:');
-      const includeAudio = process.platform === 'win32' && isFullScreen && wantAudio;
+      const includeAudio = (process.platform === 'win32' || process.platform === 'linux') && isFullScreen && wantAudio;
       callback(includeAudio ? { video: source, audio: 'loopback' } : { video: source });
     } catch (err) {
       console.error('[captura]', err);
