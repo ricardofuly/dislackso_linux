@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Star } from 'lucide-react';
+import { MicOff, Monitor, Star } from 'lucide-react';
 import { Glass } from '@/components/ui/Glass';
 import { Avatar } from '@/components/ui/Avatar';
 import { ProfileDialog } from '@/components/overlays/ProfileDialog';
@@ -7,7 +7,7 @@ import { UserMenu } from './UserMenu';
 import { useGuilds } from '@/stores/guilds';
 import { useSession } from '@/stores/session';
 import { cn } from '@/lib/cn';
-import type { PublicUser } from '@/types/api';
+import type { PublicUser, VoiceState } from '@/types/api';
 
 /**
  * Quem está no servidor, em duas listas: online e offline.
@@ -19,12 +19,24 @@ export function MembersPanel() {
   const guilds = useGuilds((s) => s.guilds);
   const activeGuildId = useGuilds((s) => s.activeGuildId);
   const onlineMap = useGuilds((s) => s.online);
+  const presence = useGuilds((s) => s.presence);
   const friends = useSession((s) => s.friends);
   const meId = useSession((s) => s.me?.id);
   const [profile, setProfile] = useState<PublicUser | null>(null);
 
   const guild = guilds.find((g) => g.id === activeGuildId) ?? null;
   const online = activeGuildId ? (onlineMap[activeGuildId] ?? new Set<string>()) : new Set<string>();
+
+  // Quem está em alguma sala de voz agora, indexado por id de usuário — é o
+  // que traz o ícone de mudo/tela pra cá, igual já existe na lista de canais.
+  const inVoice = useMemo(() => {
+    const map = new Map<string, { sid: string; state: VoiceState }>();
+    const guildPresence = activeGuildId ? (presence[activeGuildId] ?? {}) : {};
+    for (const peers of Object.values(guildPresence)) {
+      for (const peer of peers) map.set(peer.user.id, { sid: peer.sid, state: peer.state });
+    }
+    return map;
+  }, [presence, activeGuildId]);
 
   const { here, away } = useMemo(() => {
     const sorted = [...(guild?.members ?? [])].sort((a, b) => {
@@ -65,28 +77,33 @@ export function MembersPanel() {
         <div className="px-2 pt-3 pb-1 text-[11px] font-semibold tracking-wider text-dim uppercase">
           {label} — {members.length}
         </div>
-        {members.map((member) => (
-          <UserMenu key={member.id} user={member}>
-            <button
-              type="button"
-              onClick={() => setProfile(member)}
-              className={cn(
-                'flex w-full items-center gap-2 rounded-[var(--radius-sm)] px-2 py-1.5',
-                'text-left transition-colors duration-(--duration-fast) hover:bg-hover',
-                !isOnline && 'opacity-45',
-              )}
-            >
-              <Avatar user={member} size="sm" />
-              <span className="min-w-0 flex-1 truncate text-[13px] text-text">
-                {member.name}
-                {member.id === meId && ' (você)'}
-              </span>
-              {friends.has(member.id) && (
-                <Star size={12} className="shrink-0 fill-yellow text-yellow" aria-label="Amigo" />
-              )}
-            </button>
-          </UserMenu>
-        ))}
+        {members.map((member) => {
+          const inCall = inVoice.get(member.id);
+          return (
+            <UserMenu key={member.id} user={member} sid={inCall?.sid}>
+              <button
+                type="button"
+                onClick={() => setProfile(member)}
+                className={cn(
+                  'flex w-full items-center gap-2 rounded-[var(--radius-sm)] px-2 py-1.5',
+                  'text-left transition-colors duration-(--duration-fast) hover:bg-hover',
+                  !isOnline && 'opacity-45',
+                )}
+              >
+                <Avatar user={member} size="sm" speaking={inCall?.state.speaking} />
+                <span className="min-w-0 flex-1 truncate text-[13px] text-text">
+                  {member.name}
+                  {member.id === meId && ' (você)'}
+                </span>
+                {inCall?.state.screen && <Monitor size={12} className="shrink-0 text-green" />}
+                {inCall && !inCall.state.mic && <MicOff size={12} className="shrink-0 text-red" />}
+                {friends.has(member.id) && (
+                  <Star size={12} className="shrink-0 fill-yellow text-yellow" aria-label="Amigo" />
+                )}
+              </button>
+            </UserMenu>
+          );
+        })}
       </>
     );
   }

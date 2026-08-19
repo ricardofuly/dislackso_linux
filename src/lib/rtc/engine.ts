@@ -10,28 +10,25 @@ import { QualityControl } from './quality';
 import { ScreenSharing } from './sharing';
 import { buildReport } from './stats';
 
-
 /**
  * O motor de mídia da sala de voz.
  *
- * Compõe três peças independentes, expostas direto para quem usa em vez de
- * escondidas atrás de métodos que só repassam chamada:
+ * Compõe peças independentes — `mic`, `mesh`, `screen`, `quality` —,
+ * expostas direto para quem usa em vez de escondidas atrás de métodos que só
+ * repassam chamada. O que fica aqui é o que atravessa todas elas: entrar e
+ * sair da sala, e o estado consolidado que o resto da sala precisa ver.
  *
- *   `mic`    — o microfone e o grafo de áudio;
- *   `mesh`   — as conexões diretas com os outros participantes;
- *   `screen` — a captura e o envio da tela.
- *
- * O que fica aqui é o que atravessa as três: qualidade, entrar e sair da
- * sala, e o estado consolidado que o resto da sala precisa ver.
- *
- * Vive fora do React de propósito. WebRTC é uma máquina de estados cheia de
- * callbacks; amarrá-la ao ciclo de render só produziria reconexões a cada
- * re-render. A interface se inscreve nos eventos daqui.
+ * Vive fora do React de propósito: amarrar WebRTC ao ciclo de render só
+ * produziria reconexões a cada re-render. A interface se inscreve nos
+ * eventos daqui.
  */
 export class VoiceEngine extends Emitter<VoiceEvents> {
   private sid = '';
   private iceServers: RTCIceServer[] = [];
   private inRoom = false;
+
+  /** Mudo completo: não fala nem ouve. Quem lê o áudio dos outros (`PeerAudio`) confere isto. */
+  deafened = false;
 
   readonly quality = new QualityControl({
     onApply: (preset) => {
@@ -109,13 +106,27 @@ export class VoiceEngine extends Emitter<VoiceEvents> {
 
   /** Alterna o microfone. Fica aqui, e não em `mic`, por causa do som de aviso. */
   toggleMic(): boolean {
+    const wasMuted = !this.mic.enabled;
     const next = this.mic.toggle();
     if (next === null) {
       this.emit('notice', 'Nenhum microfone disponível.');
       return false;
     }
+    if (next && wasMuted) this.deafened = false; // abrir o mic sai do ensurdecido sozinho
     feedback(next ? 'unmute' : 'mute');
     return next;
+  }
+
+  /** Ensurdece: para de ouvir todo mundo e muta o próprio microfone junto. */
+  toggleDeafen(): boolean {
+    this.deafened = !this.deafened;
+    if (this.deafened && this.mic.enabled) {
+      this.mic.enabled = false;
+      this.mic.sync();
+    }
+    feedback(this.deafened ? 'deafen' : 'undeafen');
+    this.announce();
+    return this.deafened;
   }
 
   /** Troca o microfone em uso sem derrubar as conexões. */
@@ -150,6 +161,7 @@ export class VoiceEngine extends Emitter<VoiceEvents> {
 
   stop(): void {
     this.inRoom = false;
+    this.deafened = false;
     this.screen.dispose();
     this.mesh.close();
     this.mic.close();

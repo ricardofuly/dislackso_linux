@@ -2,7 +2,7 @@ import { settings } from '@/stores/settings';
 
 export type FeedbackKind =
   | 'join' | 'leave' | 'message' | 'announce'
-  | 'mute' | 'unmute' | 'screenstart' | 'screenstop';
+  | 'mute' | 'unmute' | 'screenstart' | 'screenstop' | 'deafen' | 'undeafen';
 
 /**
  * Notas de cada aviso, em Hz. Sequências curtas: subindo para "algo começou",
@@ -19,6 +19,8 @@ const TONES: Record<FeedbackKind, number[]> = {
   announce: [560, 780, 990],
   mute: [520, 340],
   unmute: [520, 700],
+  deafen: [480, 300, 220],
+  undeafen: [480, 620, 780],
 };
 
 let ctx: AudioContext | null = null;

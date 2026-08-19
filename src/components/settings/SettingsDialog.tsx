@@ -130,7 +130,10 @@ export function SettingsDialog({ section, onNavigate, onClose }: SettingsDialogP
           </div>
 
           <Dialog.Close asChild>
-            <IconButton label="Fechar (Esc)" className="absolute top-4 right-4 size-10">
+            <IconButton
+              label="Fechar (Esc)"
+              className={cn('absolute right-4 size-10', isDesktop() ? 'top-11' : 'top-4')}
+            >
               <X size={20} />
             </IconButton>
           </Dialog.Close>

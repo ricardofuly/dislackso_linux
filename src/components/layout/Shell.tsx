@@ -58,7 +58,7 @@ export function Shell() {
       <div className="flex min-h-0 flex-1 gap-1.5 p-1.5">
         <GuildRail />
         <ChannelSidebar onOpenSettings={setSettingsSection} />
-        <Stage membersOpen={members} onToggleMembers={toggleMembers} onOpenSettings={setSettingsSection} />
+        <Stage membersOpen={members} onToggleMembers={toggleMembers} />
 
         <AnimatePresence initial={false}>
           {members && (

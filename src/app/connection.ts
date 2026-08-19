@@ -16,6 +16,9 @@ import { joinVoice, leaveVoice } from '@/features/voice/actions';
 /** Se o servidor não responder nisso, deixamos o usuário entrar na mão. */
 const BOOT_TIMEOUT_MS = 8000;
 
+/** `App` chama isto num `useEffect` sem cleanup; em StrictMode o efeito roda duas vezes. */
+let started = false;
+
 /**
  * Liga o app ao servidor e mantém os stores em dia.
  *
@@ -23,8 +26,15 @@ const BOOT_TIMEOUT_MS = 8000;
  * Toda a interface lê dos stores; nenhum componente fala com o socket
  * diretamente — é o que impede o retorno do emaranhado de listeners espalhados
  * que existia no 3.x.
+ *
+ * Roda uma vez só pra vida inteira do app: chamar de novo registraria os
+ * mesmos listeners duas vezes no socket singleton, e cada evento do servidor
+ * (mensagem, aviso, entrada na sala) apareceria repetido.
  */
 export function startConnection(): void {
+  if (started) return;
+  started = true;
+
   const socket = connectSocket();
   const session = useSession.getState();
 
