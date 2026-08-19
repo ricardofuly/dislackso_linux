@@ -1,0 +1,3 @@
+git add .github/workflows/ci-build.yml
+git commit -m "ci: adiciona build de validação (Windows + Linux) em todo PR"
+git push origin master
