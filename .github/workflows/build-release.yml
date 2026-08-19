@@ -1,0 +1,69 @@
+name: Build e publicar release
+
+# Dispara quando uma tag de versão é enviada (ex.: v4.1.0).
+# Builda Windows e Linux em paralelo e publica os artefatos + latest*.yml
+# direto no Release correspondente a essa tag — sem precisar de WSL nem
+# de rodar `npm run dist` na mão em cada plataforma.
+#
+# O owner/repo de destino já vem do "build.publish" no package.json.
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write   # necessário pro electron-builder criar/editar o Release
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            build_portable: true
+          - os: ubuntu-latest
+            build_portable: false
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Instalar dependências
+        run: npm ci
+
+      # Necessário só no Linux, pra empacotar o target "rpm".
+      - name: Instalar ferramentas de empacotamento rpm
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y rpm fakeroot
+
+      # Mesma sequência do script "dist" do package.json, mas publicando
+      # de verdade (upload dos instaladores + latest.yml / latest-linux.yml)
+      # no Release da tag que disparou o workflow.
+      - name: Build e publish (installers)
+        run: npm run icon && npm run build:desktop && node scripts/prep-build.js && npx electron-builder --publish always
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Versão portátil (.zip) — só existe hoje pro Windows (scripts/pack-portable.js).
+      - name: Gerar versão portátil (Windows)
+        if: matrix.build_portable
+        shell: bash
+        run: |
+          npm run portable
+          cd release
+          7z a "DiSlackso-portable-${GITHUB_REF_NAME#v}.zip" DiSlackso-portable
+
+      - name: Subir versão portátil no Release
+        if: matrix.build_portable
+        uses: softprops/action-gh-release@v2
+        with:
+          files: release/DiSlackso-portable-*.zip

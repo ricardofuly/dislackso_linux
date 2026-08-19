@@ -1,0 +1,60 @@
+name: CI (build de validação)
+
+# Roda em todo Pull Request (e em push direto no master), sem publicar
+# nada em nenhum Release — só builda Windows e Linux pra garantir que
+# a mudança não quebrou o empacotamento em nenhuma das duas plataformas.
+#
+# Diferente do build-release.yml (que só dispara em tag v* e PUBLICA
+# no GitHub Releases), este aqui é seguro de rodar em qualquer PR,
+# inclusive vindo de forks, porque nunca escreve em lugar nenhum —
+# só gera os artefatos e anexa na execução do Actions pra download.
+on:
+  pull_request:
+    branches: [master]
+  push:
+    branches: [master]
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Instalar dependências
+        run: npm ci
+
+      # Necessário só no Linux, pra empacotar o target "rpm".
+      - name: Instalar ferramentas de empacotamento rpm
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y rpm fakeroot
+
+      # "npm run dist" já faz: icon -> build:desktop (vite) -> prep-build -> electron-builder --publish never
+      - name: Build (validação, sem publish)
+        run: npm run dist
+
+      # Sobe os instaladores como artefato da execução do Actions,
+      # pra quem quiser baixar e testar o build de um PR específico
+      # sem precisar compilar na própria máquina.
+      - name: Publicar artefatos da execução
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-${{ matrix.os }}
+          path: |
+            release/*.AppImage
+            release/*.rpm
+            release/*.exe
+          retention-days: 14
+          if-no-files-found: warn
