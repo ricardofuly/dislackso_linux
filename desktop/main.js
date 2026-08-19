@@ -499,6 +499,34 @@ ipcMain.handle('dev:broadcast', async (_e, { message, forceFocus } = {}) => {
   }
 });
 
+/**
+ * Quem tem passe livre nas ações restritas ao dono (excluir servidor/sala,
+ * gerar convite) em qualquer servidor. Pensado pra uma conta só — a de quem
+ * administra o app — e configurado por aqui porque o painel de dev já é a
+ * área protegida por senha; o ID vem do próprio app principal (Configurações
+ * › Minha conta › ID da conta).
+ */
+async function callAdminUserEndpoint(body) {
+  const cfg = readConfig();
+  if (!cfg.adminKey) return { ok: false, error: 'Defina a chave de admin primeiro (precisa bater com ADMIN_KEY no Render).' };
+  const base = cfg.serverUrlOverride || DEFAULT_SERVER_URL;
+  try {
+    const res = await fetch(`${base}/api/admin/admin-user`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ key: cfg.adminKey, ...body }),
+    });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok) return { ok: false, error: json.error || `HTTP ${res.status}` };
+    return { ok: true, adminUserId: json.adminUserId || null };
+  } catch (err) {
+    return { ok: false, error: err.message };
+  }
+}
+
+ipcMain.handle('dev:getAdminUser', () => { requireDevAuth(); return callAdminUserEndpoint({}); });
+ipcMain.handle('dev:setAdminUser', (_e, userId) => { requireDevAuth(); return callAdminUserEndpoint({ userId: String(userId || '') }); });
+
 ipcMain.handle('update:state', () => ({
   ...updateState, ...updateCapability(), current: app.getVersion(),
 }));

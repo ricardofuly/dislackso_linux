@@ -39,6 +39,9 @@ function registerAuth(socket, ctx) {
       sid: socket.id,
       token: user.token,
       friends: user.friends || [],
+      // A conta marcada como admin no painel de dev passa por qualquer "só o
+      // dono pode" em qualquer servidor — ver socket/guilds.js.
+      isAdmin: Boolean(db().adminUserId) && user.id === db().adminUserId,
     };
 
     for (const guild of guilds) {

@@ -21,6 +21,7 @@ interface GuildMenuProps {
 /** O menu "⋮" do servidor e todas as janelas que ele abre. */
 export function GuildMenu({ guild, dialog, onDialog, children }: GuildMenuProps) {
   const isOwner = useSession((s) => s.me?.id) === guild.ownerId;
+  const isAdmin = useSession((s) => s.isAdmin);
   const [invite, setInvite] = useState(guild.invite);
   const open = dialog as Dialog;
 
@@ -37,7 +38,7 @@ export function GuildMenu({ guild, dialog, onDialog, children }: GuildMenuProps)
       id: 'regen',
       label: 'Gerar novo convite',
       icon: <RefreshCw size={16} />,
-      disabled: !isOwner,
+      disabled: !isOwner && !isAdmin,
       onSelect: () => void regenerate(),
     },
     { id: 'settings', label: 'Configurações do servidor', icon: <Settings size={16} />, onSelect: () => onDialog('settings') },
@@ -55,7 +56,7 @@ export function GuildMenu({ guild, dialog, onDialog, children }: GuildMenuProps)
       label: 'Excluir servidor',
       icon: <Trash2 size={16} />,
       danger: true,
-      disabled: !isOwner,
+      disabled: !isOwner && !isAdmin,
       onSelect: () => onDialog('delete'),
     },
   ];

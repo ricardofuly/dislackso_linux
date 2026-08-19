@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { assetUrl } from '@/lib/env';
 import { initials } from '@/lib/format';
 import { cn } from '@/lib/cn';
@@ -28,6 +29,13 @@ interface AvatarProps {
  */
 export function Avatar({ user, size = 'md', className, speaking }: AvatarProps) {
   const src = user?.avatar ? assetUrl(user.avatar) : '';
+  const [broken, setBroken] = useState(false);
+
+  // Um novo `src` merece uma nova chance — senão, trocar de foto depois de
+  // uma falha ficaria preso nas iniciais para sempre.
+  useEffect(() => setBroken(false), [src]);
+
+  const showImage = Boolean(src) && !broken;
 
   return (
     <span
@@ -39,10 +47,16 @@ export function Avatar({ user, size = 'md', className, speaking }: AvatarProps) 
         'transition-shadow duration-(--duration-fast)',
         className,
       )}
-      style={src ? undefined : { background: user?.color ?? 'var(--color-accent)' }}
+      style={showImage ? undefined : { background: user?.color ?? 'var(--color-accent)' }}
     >
-      {src ? (
-        <img src={src} alt="" className="size-full object-cover" draggable={false} />
+      {showImage ? (
+        <img
+          src={src}
+          alt=""
+          className="size-full object-cover"
+          draggable={false}
+          onError={() => setBroken(true)}
+        />
       ) : (
         initials(user?.name)
       )}

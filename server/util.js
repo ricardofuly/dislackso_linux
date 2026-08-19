@@ -89,15 +89,25 @@ function isHexColor(value) {
 }
 
 /**
- * Só aceita caminhos que nós mesmos geramos, nunca URL arbitrária.
+ * Só aceita imagens que nós mesmos validamos, nunca URL arbitrária.
  * Devolve `undefined` (e não `''`) quando o valor é inválido, para o chamador
  * distinguir "apagar a imagem" de "esse valor não serve".
+ *
+ * Aceita dois formatos: `/uploads/...` (uploads antigos, de quando a imagem
+ * ia pro disco) e `data:` URL (formato atual — ver `http/routes.js`, embutida
+ * no próprio banco pra sobreviver a um redeploy do servidor).
  */
 function cleanAssetPath(value) {
   if (value === null || value === '') return '';
-  const ok = typeof value === 'string'
-    && /^\/uploads\/[A-Za-z0-9_-]+\.(png|jpg|gif|webp)$/.test(value);
-  return ok ? value : undefined;
+  if (typeof value !== 'string') return undefined;
+
+  if (/^\/uploads\/[A-Za-z0-9_-]+\.(png|jpg|gif|webp)$/.test(value)) return value;
+
+  const match = /^data:([^;,]+);base64,([A-Za-z0-9+/]+=*)$/.exec(value);
+  if (!match || !IMAGE_TYPES[match[1]]) return undefined;
+  const approxBytes = Math.floor((match[2].length * 3) / 4);
+  if (approxBytes > MAX_UPLOAD_BYTES) return undefined;
+  return value;
 }
 
 module.exports = {

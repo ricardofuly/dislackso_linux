@@ -4,9 +4,11 @@ import { Avatar } from '@/components/ui/Avatar';
 import { cn } from '@/lib/cn';
 import { useSession } from '@/stores/session';
 import { UserMenu } from '@/components/members/UserMenu';
+import { ChannelMenu } from './ChannelMenu';
 import type { Channel, PeerInfo } from '@/types/api';
 
 interface VoiceChannelRowProps {
+  guildId: string;
   channel: Channel;
   occupants: PeerInfo[];
   active: boolean;
@@ -21,28 +23,30 @@ interface VoiceChannelRowProps {
  * atualização de presença (que chega toda vez que alguém abre o microfone).
  * No 3.x era exatamente isso que fazia os avatares piscarem.
  */
-export function VoiceChannelRow({ channel, occupants, active, onJoin }: VoiceChannelRowProps) {
+export function VoiceChannelRow({ guildId, channel, occupants, active, onJoin }: VoiceChannelRowProps) {
   const meId = useSession((s) => s.me?.id);
 
   return (
     <div>
-      <button
-        type="button"
-        onClick={onJoin}
-        className={cn(
-          'flex w-full items-center gap-1.5 rounded-[var(--radius-sm)] px-2 py-1.5 text-sm',
-          'transition-colors duration-(--duration-fast)',
-          active ? 'bg-active text-bright' : 'text-dim hover:bg-hover hover:text-text',
-        )}
-      >
-        <Volume2 size={15} className="shrink-0 opacity-70" />
-        <span className="flex-1 truncate text-left">{channel.name}</span>
-        {occupants.length > 0 && (
-          <span className="rounded-full bg-bg-4 px-1.5 text-[11px] font-semibold text-dim">
-            {occupants.length}
-          </span>
-        )}
-      </button>
+      <ChannelMenu guildId={guildId} channel={channel}>
+        <button
+          type="button"
+          onClick={onJoin}
+          className={cn(
+            'flex w-full items-center gap-1.5 rounded-[var(--radius-sm)] px-2 py-1.5 text-sm',
+            'transition-colors duration-(--duration-fast)',
+            active ? 'bg-active text-bright' : 'text-dim hover:bg-hover hover:text-text',
+          )}
+        >
+          <Volume2 size={15} className="shrink-0 opacity-70" />
+          <span className="flex-1 truncate text-left">{channel.name}</span>
+          {occupants.length > 0 && (
+            <span className="rounded-full bg-bg-4 px-1.5 text-[11px] font-semibold text-dim">
+              {occupants.length}
+            </span>
+          )}
+        </button>
+      </ChannelMenu>
 
       <AnimatePresence initial={false}>
         {occupants.map((peer) => (

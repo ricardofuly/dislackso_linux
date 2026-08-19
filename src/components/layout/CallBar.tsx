@@ -7,6 +7,7 @@ import { StatsDialog } from '@/components/overlays/StatsDialog';
 import { voice } from '@/lib/rtc/engine';
 import { cn } from '@/lib/cn';
 import { useRoom } from '@/stores/room';
+import { toast } from '@/stores/toasts';
 import { leaveVoice, toggleScreen } from '@/features/voice/actions';
 
 interface CallBarProps {
@@ -43,7 +44,10 @@ export function CallBar({ onOpenSettings }: CallBarProps) {
       <IconButton
         label={deafened ? 'Reativar áudio' : 'Ensurdecer (mutar tudo)'}
         active={deafened}
-        onClick={() => voice.toggleDeafen()}
+        onClick={() => {
+          const next = voice.toggleDeafen();
+          toast(next ? 'Você ensurdeceu — não vai ouvir mais ninguém até desligar.' : 'Você voltou a ouvir.');
+        }}
         className={deafened ? 'text-red' : undefined}
       >
         {deafened ? <EarOff size={17} /> : <Ear size={17} />}

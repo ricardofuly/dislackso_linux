@@ -22,17 +22,22 @@ export function VoiceStage() {
   const strip = focused ? entries.filter((e) => e.id !== focused.id) : [];
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-2 p-2">
+    // `overflow-hidden` aqui e nos containers abaixo não é só estética: um
+    // tile em transição de layout (Motion recalcula grade quando alguém
+    // entra/sai) pode momentaneamente sofrer um FLIP exagerado e visualmente
+    // "escapar" da área da chamada por um instante — sem isto, numa janela
+    // transparente, ele fica flutuando fora do app até a próxima repintura.
+    <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-hidden p-2">
       <PeerAudio />
 
       {focused ? (
         <>
-          <div className="min-h-0 flex-1">
+          <div className="min-h-0 flex-1 overflow-hidden">
             <Tile key={focused.id} entry={focused} focused />
           </div>
 
           {strip.length > 0 && (
-            <div className="flex h-28 shrink-0 gap-2 overflow-x-auto">
+            <div className="flex h-28 shrink-0 gap-2 overflow-x-auto overflow-y-hidden">
               <AnimatePresence initial={false}>
                 {strip.map((entry) => (
                   <div key={entry.id} className="aspect-video h-full shrink-0">
@@ -47,7 +52,7 @@ export function VoiceStage() {
         <motion.div
           layout
           className={cn(
-            'grid min-h-0 flex-1 gap-2',
+            'grid min-h-0 flex-1 gap-2 overflow-hidden',
             entries.length === 1 && 'grid-cols-1',
             entries.length === 2 && 'grid-cols-2',
             entries.length > 2 && 'grid-cols-2 xl:grid-cols-3',

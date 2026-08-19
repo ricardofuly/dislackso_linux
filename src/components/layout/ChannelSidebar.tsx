@@ -13,6 +13,7 @@ import { cn } from '@/lib/cn';
 import { GuildMenu } from './GuildMenu';
 import { VoiceChannelRow } from './VoiceChannelRow';
 import { CallBar } from './CallBar';
+import { ChannelMenu } from './ChannelMenu';
 
 interface ChannelSidebarProps {
   onOpenSettings(section: string): void;
@@ -53,27 +54,29 @@ export function ChannelSidebar({ onOpenSettings }: ChannelSidebarProps) {
       <div className="min-h-0 flex-1 space-y-1 overflow-y-auto p-2">
         {textChannels.length > 0 && <SectionLabel>Canais de texto</SectionLabel>}
         {textChannels.map((channel) => (
-          <button
-            key={channel.id}
-            type="button"
-            onClick={() => void openTextChannel(guild!.id, channel.id)}
-            className={cn(
-              'flex w-full items-center gap-1.5 rounded-[var(--radius-sm)] px-2 py-1.5 text-sm',
-              'transition-colors duration-(--duration-fast)',
-              activeTextChannelId === channel.id
-                ? 'bg-active text-bright'
-                : 'text-dim hover:bg-hover hover:text-text',
-            )}
-          >
-            <Hash size={15} className="shrink-0 opacity-70" />
-            <span className="truncate">{channel.name}</span>
-          </button>
+          <ChannelMenu key={channel.id} guildId={guild!.id} channel={channel}>
+            <button
+              type="button"
+              onClick={() => void openTextChannel(guild!.id, channel.id)}
+              className={cn(
+                'flex w-full items-center gap-1.5 rounded-[var(--radius-sm)] px-2 py-1.5 text-sm',
+                'transition-colors duration-(--duration-fast)',
+                activeTextChannelId === channel.id
+                  ? 'bg-active text-bright'
+                  : 'text-dim hover:bg-hover hover:text-text',
+              )}
+            >
+              <Hash size={15} className="shrink-0 opacity-70" />
+              <span className="truncate">{channel.name}</span>
+            </button>
+          </ChannelMenu>
         ))}
 
         {voiceChannels.length > 0 && <SectionLabel>Salas de voz e tela</SectionLabel>}
         {voiceChannels.map((channel) => (
           <VoiceChannelRow
             key={channel.id}
+            guildId={guild!.id}
             channel={channel}
             occupants={presence[guild!.id]?.[channel.id] ?? []}
             active={room?.guildId === guild!.id && room.channelId === channel.id}

@@ -28,9 +28,15 @@ function registerGuilds(socket, ctx) {
     return guild;
   }
 
+  /** A conta marcada como administradora do app (painel de dev) passa por qualquer dono. */
+  function isAppAdmin(userId) {
+    return Boolean(db().adminUserId) && userId === db().adminUserId;
+  }
+
   function requireOwner(guildId, action) {
     const guild = requireGuild(guildId);
-    if (guild.ownerId !== session().userId) throw new Error(`Somente o dono pode ${action}.`);
+    const { userId } = session();
+    if (guild.ownerId !== userId && !isAppAdmin(userId)) throw new Error(`Somente o dono pode ${action}.`);
     return guild;
   }
 

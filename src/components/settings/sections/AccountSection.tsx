@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { LogOut } from 'lucide-react';
+import { Copy, LogOut } from 'lucide-react';
 import { Avatar } from '@/components/ui/Avatar';
 import { Button } from '@/components/ui/Button';
 import { TextArea, TextInput } from '@/components/ui/Field';
@@ -8,6 +8,7 @@ import { SettingRow } from '../SettingRow';
 import { assetUrl } from '@/lib/env';
 import { updateProfile } from '@/features/profile/actions';
 import { useSession } from '@/stores/session';
+import { toast } from '@/stores/toasts';
 
 /** Apelido, pronomes, bio e o botão de sair da conta. */
 export function AccountSection() {
@@ -62,6 +63,29 @@ export function AccountSection() {
           placeholder="Fale um pouco sobre você…"
           onBlur={(e) => void updateProfile({ bio: e.target.value })}
         />
+      </SettingRow>
+
+      <SettingRow
+        title="ID da conta"
+        desc="Identificador único, sem uso no dia a dia — só precisa dele para configurar o painel de desenvolvedor (ex.: administrador do app)."
+      >
+        <div className="flex items-center gap-2">
+          <code className="selectable rounded-[var(--radius-sm)] bg-field px-2.5 py-1.5 font-mono text-[12px] text-dim">
+            {me.id}
+          </code>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() =>
+              navigator.clipboard
+                .writeText(me.id)
+                .then(() => toast('ID copiado.'))
+                .catch(() => toast(`Copie manualmente: ${me.id}`, 8000))
+            }
+          >
+            <Copy size={14} />
+          </Button>
+        </div>
       </SettingRow>
 
       <SettingRow title="Sessão" desc="Sai desta conta neste app.">

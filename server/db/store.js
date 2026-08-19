@@ -19,14 +19,15 @@ const { createMirror } = require('./supabase');
 /** Agrupa rajadas de alteração numa gravação só. */
 const SAVE_DEBOUNCE_MS = 250;
 
-const emptyDb = () => ({ users: {}, guilds: {}, usernames: {} });
+const emptyDb = () => ({ users: {}, guilds: {}, usernames: {}, adminUserId: null });
 
-/** Garante as três raízes e normaliza os canais de todos os servidores. */
+/** Garante as raízes e normaliza os canais de todos os servidores. */
 function normalize(db) {
   const out = { ...emptyDb(), ...db };
   out.users = out.users || {};
   out.guilds = out.guilds || {};
   out.usernames = out.usernames || {};
+  out.adminUserId = out.adminUserId || null;
   for (const guild of Object.values(out.guilds)) {
     guild.channels = (guild.channels || []).map(normalizeChannel);
   }

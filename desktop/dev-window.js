@@ -57,6 +57,17 @@ async function loadPanel() {
     toastNote('#btn-save-admin-key', 'Salva.');
   };
 
+  const adminUser = await window.desktopDev.getAdminUser();
+  $('#admin-user-id').value = (adminUser.ok && adminUser.adminUserId) || '';
+
+  $('#btn-save-admin-user').onclick = async () => {
+    const res = await window.desktopDev.setAdminUser($('#admin-user-id').value.trim());
+    $('#admin-user-msg').textContent = res.ok
+      ? (res.adminUserId ? 'Salvo — essa conta agora é admin em qualquer servidor.' : 'Removido.')
+      : res.error;
+    $('#admin-user-msg').className = res.ok ? 'dev-ok' : 'dev-error';
+  };
+
   $('#btn-send-broadcast').onclick = async () => {
     const message = $('#admin-message').value.trim();
     if (!message) { $('#broadcast-msg').textContent = 'Escreva uma mensagem primeiro.'; $('#broadcast-msg').className = 'dev-error'; return; }
