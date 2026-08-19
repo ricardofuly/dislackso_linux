@@ -88,6 +88,11 @@ jobs:
         continue-on-error: true
         uses: softprops/action-gh-release@v2
         with:
+          # Sem isto, essa action só acha a release sozinha quando o próprio
+          # push da tag disparou o workflow — rodando via workflow_dispatch
+          # (GITHUB_REF é a branch, não a tag) ela não sabia em qual release
+          # subir o zip e pulava em silêncio.
+          tag_name: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
           files: release/DiSlackso-portable-*.zip
 
   # Só depois que os dois builds da matriz acima terminam (needs: build) --
