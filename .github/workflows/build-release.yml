@@ -1,6 +1,10 @@
 name: Build e publicar release
 
-# Dispara quando uma tag de versão é enviada (ex.: v4.1.0).
+# Dispara quando uma tag de versão é enviada (ex.: v4.1.0), ou na mão pelo
+# Actions/gh (workflow_dispatch) apontando pra uma tag já existente — útil
+# pra rebuildar sem apagar e recriar a tag, ex.: depois de corrigir este
+# próprio workflow.
+#
 # Builda Windows e Linux em paralelo e publica os artefatos + latest*.yml
 # direto no Release correspondente a essa tag — sem precisar de WSL nem
 # de rodar `npm run dist` na mão em cada plataforma.
@@ -10,6 +14,11 @@ on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag da release já publicada (ex.: v4.0.3)'
+        required: true
 
 permissions:
   contents: write   # necessário pro electron-builder criar/editar o Release
@@ -30,6 +39,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref }}
 
       - name: Configurar Node.js
         uses: actions/setup-node@v4
@@ -47,23 +58,34 @@ jobs:
 
       # Mesma sequência do script "dist" do package.json, mas publicando
       # de verdade (upload dos instaladores + latest.yml / latest-linux.yml)
-      # no Release da tag que disparou o workflow.
+      # no Release da tag que disparou o workflow. A tag/versão que o
+      # electron-builder usa vem do "version" do package.json que acabou de
+      # ser baixado no checkout acima — não depende de GITHUB_REF_NAME.
       - name: Build e publish (installers)
         run: npm run icon && npm run build:desktop && node scripts/prep-build.js && npx electron-builder --publish always
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       # Versão portátil (.zip) — só existe hoje pro Windows (scripts/pack-portable.js).
+      # "npm run portable" gera a pasta em dist/DiSlackso-portable (não em
+      # release/) — o "cd release" sozinho, sem apontar pra pasta certa,
+      # foi o que quebrou o zip na primeira tentativa (7z não achava nada
+      # pra compactar). É um bônus, não o instalador principal: uma falha
+      # aqui não pode travar o job inteiro nem o aviso de atualização.
       - name: Gerar versão portátil (Windows)
         if: matrix.build_portable
         shell: bash
+        continue-on-error: true
+        env:
+          RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
         run: |
           npm run portable
-          cd release
-          7z a "DiSlackso-portable-${GITHUB_REF_NAME#v}.zip" DiSlackso-portable
+          cd dist
+          7z a "../release/DiSlackso-portable-${RELEASE_TAG#v}.zip" DiSlackso-portable
 
       - name: Subir versão portátil no Release
         if: matrix.build_portable
+        continue-on-error: true
         uses: softprops/action-gh-release@v2
         with:
           files: release/DiSlackso-portable-*.zip
@@ -79,11 +101,12 @@ jobs:
         env:
           SERVER_URL: ${{ secrets.SERVER_URL }}
           ADMIN_KEY: ${{ secrets.ADMIN_KEY }}
+          RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
         run: |
           if [ -z "$ADMIN_KEY" ]; then
             echo "Secret ADMIN_KEY não configurado neste repositório -- pulando aviso automático."
             exit 0
           fi
           BASE="${SERVER_URL:-https://dislackso.onrender.com}"
-          BODY=$(printf '{"key":"%s","version":"%s"}' "$ADMIN_KEY" "$GITHUB_REF_NAME")
+          BODY=$(printf '{"key":"%s","version":"%s"}' "$ADMIN_KEY" "$RELEASE_TAG")
           curl -fsS -X POST "$BASE/api/admin/notify-update" -H "Content-Type: application/json" -d "$BODY"
