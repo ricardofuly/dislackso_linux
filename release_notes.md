@@ -1,3 +1,51 @@
+### Versão 4.1.0
+
+Foco numa correção crítica de persistência (contas e fotos que sumiam sozinhas), controle de
+verdade pro dono do servidor, e três bugs de sala corrigidos na raiz.
+
+**Correção crítica — contas e fotos sumindo sozinhas**
+
+* Causa raiz de "todo mundo perdeu a conta" e das fotos somem a cada atualização do servidor:
+  quando a leitura do Supabase falhava num redeploy (projeto hibernado no plano gratuito, rede
+  fria no boot do Render), o servidor subia com o banco vazio — e o primeiro salvamento gravava
+  esse vazio por cima do estado de todo mundo, sem volta. Agora o espelhamento tem quatro
+  defesas em camadas: nunca grava antes de conseguir ler o remoto pelo menos uma vez; nunca
+  grava um banco sem usuários por cima de um estado que já teve usuários; insiste várias vezes
+  antes de desistir de restaurar (e continua tentando em segundo plano depois); e salva de
+  forma síncrona ao fechar o processo, pra nada se perder na janela entre uma mensagem/foto
+  chegar e o servidor ser reiniciado no deploy seguinte.
+
+**Administração**
+
+* **Dono do servidor ganha controle de verdade**, tudo pelo botão direito: expulsar um membro
+  (derruba as sessões dela, inclusive da sala de voz) e mover alguém de sala de voz. Criar
+  canal deixou de ser liberado pra qualquer membro — agora segue a mesma regra de excluir,
+  convidar e editar.
+* Uma coroa aparece ao lado do nome do dono, na lista de membros e nas salas de voz.
+
+**Sala de voz e transmissão**
+
+* **Áudio sumia ao abrir o chat:** abrir um canal de texto durante uma chamada silenciava todo
+  mundo pro seu lado (mas todo mundo continuava te ouvindo). Corrigido.
+* **Tela cheia ficava preta:** entrar em tela cheia (ou sair dela) podia deixar o vídeo em
+  preto, sem recuperar sozinho — só voltar pra grade "consertava". Corrigido pra sempre
+  recuperar o vídeo ao trocar de modo.
+* **Fita de participantes amassada:** a fileira de participantes sob o tile destacado ficava
+  com vão sobrando e uma barra de rolagem vertical sem motivo. Corrigido.
+* **Mudo e ensurdecido agora são preferência de verdade:** ficam salvos e os dois botões são
+  fixos no seu cartão de conta, dentro e fora de chamada. Entrar numa sala respeita como você
+  estava antes (quem se mutou entra mudo, quem ensurdeceu entra ensurdecido) — sair da sala não
+  zera mais isso.
+
+**Perfil**
+
+* **Prévia de avatar/banner em branco** na tela de conta, mesmo com a foto valendo no resto do
+  app. Corrigido.
+* **Imagens de perfil gigantes no banco:** uma foto de celular de 10 MB virava ~13 MB dentro do
+  banco espelhado no Supabase a cada salvamento — um dos fatores por trás da corrupção de dados
+  descrita acima. Agora a imagem é reduzida no próprio app pro tamanho em que é exibida antes de
+  subir (avatar/ícone 512px, banner 1920px); GIF não é mexido, pra não perder a animação.
+
 ### Versão 4.0.3
 
 Foco em administração, tela cheia de verdade na transmissão e uma correção séria de
