@@ -37,9 +37,15 @@ export function Toaster() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -8, scale: 0.97 }}
             transition={{ type: 'spring', stiffness: 420, damping: 32 }}
-            onClick={() => dismiss(toast.id)}
-            className="glass glass-card glass-refract pointer-events-auto max-w-[min(90vw,30rem)]
-                       px-4 py-2.5 text-sm text-bright shadow-(--shadow-lift)"
+            onClick={() => {
+              toast.onClick?.();
+              dismiss(toast.id);
+            }}
+            className={cn(
+              'glass glass-card glass-refract pointer-events-auto max-w-[min(90vw,30rem)]',
+              'px-4 py-2.5 text-sm text-bright shadow-(--shadow-lift)',
+              toast.onClick && 'ring-1 ring-accent',
+            )}
           >
             {toast.message}
           </motion.button>

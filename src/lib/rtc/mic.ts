@@ -5,6 +5,15 @@ import { createRNNoiseNode } from './rnnoise';
 /** Acima disto (0..255, média do espectro) consideramos que a pessoa está falando. */
 const SPEAKING_THRESHOLD = 12;
 
+/**
+ * Quanto tempo o indicador de "falando" continua aceso depois do último pico
+ * de volume. Fala normal tem micropausas entre sílabas que cruzam o limiar
+ * dezenas de vezes por segundo — sem essa margem, o anel verde piscava a
+ * cada uma delas em vez de acender uma vez e apagar quando a pessoa
+ * realmente parou de falar.
+ */
+const SPEAKING_HANGOVER_MS = 400;
+
 interface MicCallbacks {
   /** Nível instantâneo (0..1) — alimenta o medidor das configurações. */
   onLevel(level: number): void;
@@ -39,6 +48,8 @@ export class MicGraph {
   /** O que o usuário escolheu — diferente de "está passando áudio agora". */
   enabled = false;
   private pttHeld = false;
+  /** Timestamp (`performance.now()`) do último pico de volume acima do limiar. */
+  private lastLoudAt = 0;
 
   constructor(private readonly cb: MicCallbacks) {}
 
@@ -179,7 +190,9 @@ export class MicGraph {
       this.cb.onLevel(this.level);
 
       const enabled = this.stream?.getAudioTracks().some((t) => t.enabled) ?? false;
-      const speaking = enabled && average > SPEAKING_THRESHOLD;
+      const now = performance.now();
+      if (enabled && average > SPEAKING_THRESHOLD) this.lastLoudAt = now;
+      const speaking = enabled && now - this.lastLoudAt < SPEAKING_HANGOVER_MS;
       if (speaking !== this.speaking) {
         this.speaking = speaking;
         this.cb.onSpeakingChange(speaking);

@@ -21,6 +21,8 @@ interface RoomState {
   localMutes: Set<string>;
   /** sid → volume individual (0..2), só para mim. */
   localVolumes: Map<string, number>;
+  /** Tile em tela cheia de verdade (cobre a janela inteira), ou `null`. */
+  fullscreenId: string | null;
   /**
    * Sobe a cada evento do motor de mídia. É o gatilho de re-render para a
    * parte da interface que lê direto do motor (que não é reativo).
@@ -36,6 +38,8 @@ interface RoomState {
   markSharing(sid: string, sharing: boolean): void;
   toggleMute(sid: string): void;
   bumpVolume(sid: string, delta: number): number;
+  enterFullscreen(id: string): void;
+  exitFullscreen(): void;
   bump(): void;
 }
 
@@ -54,6 +58,7 @@ export const useRoom = create<RoomState>()((set, get) => ({
   sharingSeen: new Set(),
   localMutes: new Set(),
   localVolumes: new Map(),
+  fullscreenId: null,
   tick: 0,
 
   enter(room) {
@@ -64,6 +69,7 @@ export const useRoom = create<RoomState>()((set, get) => ({
     set({
       room: null,
       focusId: null,
+      fullscreenId: null,
       watching: new Set(),
       previews: new Map(),
       sharingSeen: new Set(),
@@ -112,6 +118,14 @@ export const useRoom = create<RoomState>()((set, get) => ({
     const next = clamp(current + delta, 0, 2);
     set({ localVolumes: new Map(get().localVolumes).set(sid, next) });
     return next;
+  },
+
+  enterFullscreen(id) {
+    set({ fullscreenId: id });
+  },
+
+  exitFullscreen() {
+    set({ fullscreenId: null });
   },
 
   bump() {

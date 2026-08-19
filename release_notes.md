@@ -1,3 +1,53 @@
+### Versão 4.0.3
+
+Foco em administração, tela cheia de verdade na transmissão e uma correção séria de
+persistência de imagens.
+
+**Administração**
+
+* **Conta administradora**, configurável no painel de desenvolvedor (`Ctrl+Alt+Shift+D` →
+  Administração): essa conta passa por qualquer restrição de "só o dono pode" em qualquer
+  servidor — excluir servidor, excluir sala, gerar convite. O ID da própria conta fica
+  disponível pra copiar em *Configurações › Minha conta*.
+* **Excluir canais de texto e salas de voz**, finalmente com um jeito de fazer isso pela
+  interface: botão direito no canal → Excluir.
+
+**Tela cheia, de verdade**
+
+* Clicar em "Tela cheia" agora esconde o resto da interface (sidebar, chat, membros) e
+  deixa só a transmissão, tela toda — como no YouTube. Os controles aparecem ao mexer o
+  mouse e somem sozinhos depois de alguns segundos parado. Esc sai a qualquer momento, e
+  se quem está transmitindo parar no meio, sai sozinho em vez de deixar uma tela preta.
+* **Atalho `Shift+R`** reinicia o app instalado — útil pra testar uma atualização recém
+  baixada sem fechar e abrir na mão.
+
+**Correção séria — imagens de perfil sumindo**
+
+* Avatar, banner e ícone de servidor tinham dois problemas em cadeia: o servidor salvava
+  em disco, que é efêmero no Render (some a cada redeploy) — e a correção inicial disso
+  (embutir a imagem direto no registro do usuário) estourava o limite de tamanho de
+  mensagem do socket.io, fazendo salvar banner "não dar em nada". Agora a imagem vira um
+  registro próprio, persistido/espelhado no Supabase igual o resto do banco, servido sob
+  demanda por um link curto — o socket nunca carrega o arquivo inteiro.
+
+**Interface**
+
+* Ícone da bandeja do sistema, que nunca aparecia: o arquivo do ícone não estava sendo
+  incluído no app empacotado.
+* *Minha conta* e *Perfil* viraram uma seção só — foto e banner ficam editáveis ali dentro.
+* Tela de Atualizações reformulada: link pras notas da versão instalada em vez de texto
+  colado, e "Procurar atualizações" abre uma janela própria que acompanha checar → achar →
+  baixar → reiniciar, tudo automático ao terminar.
+* Aviso automático (com som) pra quem estiver com o app aberto quando uma versão nova é
+  publicada — clicar já baixa e reinicia sozinho. Builda em CI agora (Windows e Linux, via
+  GitHub Actions), então esse aviso só dispara depois que o instalador de cada plataforma
+  termina de subir.
+* Avatares cortados na fita de participantes e na grade, e um scroll vertical indevido:
+  ajustes de tamanho e de onde cortar (ou não) o conteúdo de cada tile.
+* O anel verde de "está falando" piscava a cada micropausa entre sílabas — agora tem uma
+  margem de meio segundo antes de apagar, então acende uma vez e segura enquanto a
+  conversa continua, em vez de piscar sem parar.
+
 ### Versão 4.0.2
 
 Correções de interface da 4.0/4.0.1 e alguns pedidos recorrentes na chamada de voz.

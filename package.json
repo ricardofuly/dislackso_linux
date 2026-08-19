@@ -1,6 +1,6 @@
 {
   "name": "dislackso",
-  "version": "4.0.2",
+  "version": "4.0.3",
   "private": true,
   "description": "Servidores privados, compartilhamento de tela em alta resolucao e anotacoes ao vivo",
   "author": "Spike",
@@ -72,6 +72,8 @@
       "desktop/**/*",
       "server/**/*",
       "dist/desktop/**/*",
+      "build/icon.ico",
+      "build/icon.png",
       "package.json"
     ],
     "win": {

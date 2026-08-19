@@ -8,7 +8,9 @@ import { Shell } from '@/components/layout/Shell';
 import { AnnouncementDialog } from '@/components/overlays/AnnouncementDialog';
 import { ScreenPickerDialog } from '@/components/overlays/ScreenPickerDialog';
 import { InviteCatcher } from '@/components/overlays/InviteCatcher';
+import { UpdateCheckModal } from '@/components/settings/UpdateCheckModal';
 import { useSession } from '@/stores/session';
+import { useUpdateAnnounce } from '@/stores/updateAnnounce';
 import { startConnection } from './connection';
 import { useAutoUpdateCheck } from '@/hooks/useUpdater';
 import { useEngineBridge } from './useEngineBridge';
@@ -25,6 +27,8 @@ import { useScreenPickerBridge } from './useScreenPickerBridge';
 export function App() {
   const phase = useSession((s) => s.phase);
   const ready = useDesktopServerOverride();
+  const updateOpen = useUpdateAnnounce((s) => s.open);
+  const hideUpdate = useUpdateAnnounce((s) => s.hide);
 
   useEngineBridge();
   useAutoUpdateCheck();
@@ -75,6 +79,7 @@ export function App() {
       <AnnouncementDialog />
       <ScreenPickerDialog />
       <InviteCatcher />
+      <UpdateCheckModal open={updateOpen} onClose={hideUpdate} />
       <Toaster />
     </TooltipProvider>
   );

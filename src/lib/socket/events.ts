@@ -64,4 +64,6 @@ export interface ServerEvents {
   'annot:clear': (p: { from: string; target: string }) => void;
 
   'admin:message': (p: AdminAnnouncement) => void;
+  /** Disparado quando uma release nova é publicada — ver .github/workflows/build-release.yml. */
+  'app:update': (p: { version: string }) => void;
 }

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { motion } from 'motion/react';
 import { Eye, Volume2, Zap } from 'lucide-react';
 import { Avatar } from '@/components/ui/Avatar';
@@ -6,13 +7,17 @@ import { Button } from '@/components/ui/Button';
 import { AnnotationLayer } from '@/components/annotate/AnnotationLayer';
 import { cn } from '@/lib/cn';
 import { useRoom } from '@/stores/room';
-import { watchPeer } from '@/features/voice/actions';
+import { exitFullscreen, watchPeer } from '@/features/voice/actions';
 import { TileBar } from './TileBar';
 import type { StageEntry } from './useStageEntries';
 
 interface TileProps {
   entry: StageEntry;
   focused: boolean;
+  /** Tela cheia de verdade: cobre a janela inteira, por cima de tudo. */
+  fullscreen?: boolean;
+  /** Card pequeno (fita de participantes) — avatar e texto menores, cabem em h-28. */
+  compact?: boolean;
   /** No filmstrip o tile inteiro vira botão de destacar. */
   clickable?: boolean;
   onClick?(): void;
@@ -26,16 +31,19 @@ interface TileProps {
  * miniatura estática e um botão — sem gastar a banda dela nem a minha até eu
  * realmente querer ver.
  */
-export function Tile({ entry, focused, clickable, onClick }: TileProps) {
+export function Tile({ entry, focused, fullscreen, compact, clickable, onClick }: TileProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
   // Referência estável: sem isto, cada render de Tile cria uma função nova, o
   // useEffect de AnnotationLayer (que depende dela) reexecuta a cada bump de
   // tick, e o cleanup dele desliga o modo caneta assim que ele é ligado — a
   // caneta "não pega" porque se autodesativa no instante seguinte.
   const getVideo = useCallback(() => videoRef.current, []);
+  const getRoot = useCallback(() => rootRef.current, []);
   const watching = useRoom((s) => s.watching.has(entry.id));
   const preview = useRoom((s) => s.previews.get(entry.id));
   const [needsGesture, setNeedsGesture] = useState(false);
+  const [controlsVisible, setControlsVisible] = useState(true);
 
   const pending = !entry.isLocal && entry.intendsScreen && !entry.sharing && !watching;
   const showVideo = entry.sharing && Boolean(entry.stream);
@@ -55,8 +63,37 @@ export function Tile({ entry, focused, clickable, onClick }: TileProps) {
     video.play().catch(() => setNeedsGesture(true));
   }, [showVideo, entry.stream, entry.isLocal]);
 
-  return (
+  // Quem parou de transmitir enquanto alguém olhava em tela cheia não deixa
+  // ninguém preso numa tela cheia preta e vazia.
+  useEffect(() => {
+    if (fullscreen && !showVideo) exitFullscreen();
+  }, [fullscreen, showVideo]);
+
+  // Como no YouTube: os controles aparecem ao mexer o mouse e somem sozinhos
+  // depois de alguns segundos parado — só faz sentido em tela cheia, onde não
+  // há "fora do tile" pra tirar o mouse de cima e esconder pelo hover normal.
+  useEffect(() => {
+    if (!fullscreen) { setControlsVisible(true); return; }
+    const node = rootRef.current;
+    if (!node) return;
+
+    let timer: number;
+    const reveal = () => {
+      setControlsVisible(true);
+      window.clearTimeout(timer);
+      timer = window.setTimeout(() => setControlsVisible(false), 3000);
+    };
+    reveal();
+    node.addEventListener('mousemove', reveal);
+    return () => {
+      node.removeEventListener('mousemove', reveal);
+      window.clearTimeout(timer);
+    };
+  }, [fullscreen]);
+
+  const tile = (
     <motion.div
+      ref={rootRef}
       layout
       initial={{ opacity: 0, scale: 0.96 }}
       animate={{ opacity: 1, scale: 1 }}
@@ -64,10 +101,12 @@ export function Tile({ entry, focused, clickable, onClick }: TileProps) {
       transition={{ type: 'spring', stiffness: 320, damping: 34 }}
       onClick={clickable ? onClick : undefined}
       className={cn(
-        'group relative flex min-h-0 items-center justify-center overflow-hidden rounded-[var(--radius-lg)]',
-        'bg-tile ring-1 ring-line transition-shadow duration-(--duration-med)',
-        entry.speaking && 'ring-2 ring-green',
-        focused && 'ring-2 ring-accent',
+        'group relative flex min-h-0 items-center justify-center overflow-hidden',
+        fullscreen
+          ? 'fixed inset-0 z-70 rounded-none bg-black'
+          : 'rounded-[var(--radius-lg)] bg-tile ring-1 ring-line transition-shadow duration-(--duration-med)',
+        entry.speaking && !fullscreen && 'ring-2 ring-green',
+        focused && !fullscreen && 'ring-2 ring-accent',
         clickable && 'cursor-pointer hover:ring-accent',
       )}
     >
@@ -79,9 +118,9 @@ export function Tile({ entry, focused, clickable, onClick }: TileProps) {
       />
 
       {!showVideo && !pending && (
-        <div className="flex flex-col items-center gap-2 p-4 text-center">
-          <Avatar user={entry.user} size="lg" speaking={entry.speaking} />
-          <p className="text-[13px] text-dim">{entry.status}</p>
+        <div className={cn('flex flex-col items-center text-center', compact ? 'gap-1 p-2' : 'gap-2 p-4')}>
+          <Avatar user={entry.user} size={compact ? 'md' : 'lg'} speaking={entry.speaking} />
+          <p className={cn('text-dim', compact ? 'text-[11px] leading-tight' : 'text-[13px]')}>{entry.status}</p>
         </div>
       )}
 
@@ -113,9 +152,25 @@ export function Tile({ entry, focused, clickable, onClick }: TileProps) {
         </Button>
       )}
 
-      <TileBar entry={entry} focused={focused} showVideo={showVideo} video={getVideo} />
+      <TileBar
+        entry={entry}
+        focused={focused}
+        fullscreen={fullscreen}
+        showVideo={showVideo}
+        video={getVideo}
+        root={getRoot}
+        controlsVisible={fullscreen ? controlsVisible : undefined}
+      />
     </motion.div>
   );
+
+  // Fora daqui (`position: fixed` sozinho não basta): um ancestral com vidro
+  // (backdrop-filter) cria o próprio contexto de empilhamento e prende o
+  // z-index lá dentro — o painel de membros, por exemplo, é outra árvore de
+  // vidro e pintava por cima mesmo com z-index maior. Um portal direto no
+  // `body` bota o tile no mesmo nível dos modais (Radix também usa portal) e
+  // resolve pra qualquer ancestral, não só o painel de membros.
+  return fullscreen ? createPortal(tile, document.body) : tile;
 }
 
 function WatchPrompt({ preview, onWatch }: { preview?: string; onWatch(): void }) {

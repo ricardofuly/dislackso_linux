@@ -179,18 +179,27 @@ function createWindow() {
 /** O ícone da bandeja, criado uma vez só e reaproveitado a janela inteira vida do app. */
 function createTray() {
   if (tray) return;
-  const iconPath = path.join(__dirname, '..', 'build', process.platform === 'win32' ? 'icon.ico' : 'icon.png');
-  let icon = nativeImage.createFromPath(iconPath);
-  if (process.platform !== 'win32' && !icon.isEmpty()) icon = icon.resize({ width: 16, height: 16 });
+  try {
+    const iconPath = path.join(__dirname, '..', 'build', process.platform === 'win32' ? 'icon.ico' : 'icon.png');
+    let icon = nativeImage.createFromPath(iconPath);
+    if (icon.isEmpty()) throw new Error(`ícone vazio (arquivo não encontrado ou inválido em ${iconPath})`);
+    // Windows escolhe sozinho o tamanho certo dentro do .ico; nos outros, um
+    // ícone de bandeja grande demais aparece cortado ou borrado.
+    if (process.platform !== 'win32') icon = icon.resize({ width: 16, height: 16 });
 
-  tray = new Tray(icon);
-  tray.setToolTip('DiSlackso');
-  tray.setContextMenu(Menu.buildFromTemplate([
-    { label: 'Abrir DiSlackso', click: () => { if (win) { win.show(); win.focus(); } } },
-    { type: 'separator' },
-    { label: 'Sair', click: () => { isQuitting = true; app.quit(); } },
-  ]));
-  tray.on('click', () => { if (win) { win.isVisible() ? win.focus() : win.show(); } });
+    tray = new Tray(icon);
+    tray.setToolTip('DiSlackso');
+    tray.setContextMenu(Menu.buildFromTemplate([
+      { label: 'Abrir DiSlackso', click: () => { if (win) { win.show(); win.focus(); } } },
+      { type: 'separator' },
+      { label: 'Sair', click: () => { isQuitting = true; app.quit(); } },
+    ]));
+    tray.on('click', () => { if (win) { win.isVisible() ? win.focus() : win.show(); } });
+  } catch (err) {
+    // Sem ícone na bandeja o app continua funcionando normalmente — só o
+    // atalho de minimizar fica reduzido a fechar/reabrir pela barra de tarefas.
+    console.error('[tray] não consegui criar o ícone da bandeja:', err.message);
+  }
 }
 
 /**
@@ -428,6 +437,20 @@ function buildAppInfo() {
 ipcMain.handle('app:restart', () => { app.relaunch(); app.exit(0); });
 ipcMain.handle('app:home', () => { goHome(); });
 ipcMain.handle('app:info', () => buildAppInfo());
+
+/**
+ * Tela cheia de verdade, pela API nativa da janela — não pela Fullscreen API
+ * do HTML. É o próprio Electron quem intercepta `Element.requestFullscreen()`
+ * e faz a janela inteira entrar em tela cheia por baixo dos panos; chamar
+ * `setFullScreen` direto no processo principal é o mesmo resultado sem
+ * depender de como o Chromium decide tratar o pedido vindo do conteúdo.
+ */
+ipcMain.handle('app:toggleFullscreen', () => {
+  if (!win) return false;
+  const next = !win.isFullScreen();
+  win.setFullScreen(next);
+  return next;
+});
 
 /* ------------------------------------------------ painel de dev — IPC -- */
 

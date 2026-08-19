@@ -67,3 +67,23 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: release/DiSlackso-portable-*.zip
+
+  # Só depois que os dois builds da matriz acima terminam (needs: build) --
+  # avisar antes disso deixaria quem clicasse em "atualizar" com um download
+  # quebrado, porque o instalador ainda não estaria no Release.
+  notify:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Avisar quem está com o app aberto agora
+        env:
+          SERVER_URL: ${{ secrets.SERVER_URL }}
+          ADMIN_KEY: ${{ secrets.ADMIN_KEY }}
+        run: |
+          if [ -z "$ADMIN_KEY" ]; then
+            echo "Secret ADMIN_KEY não configurado neste repositório -- pulando aviso automático."
+            exit 0
+          fi
+          BASE="${SERVER_URL:-https://dislackso.onrender.com}"
+          BODY=$(printf '{"key":"%s","version":"%s"}' "$ADMIN_KEY" "$GITHUB_REF_NAME")
+          curl -fsS -X POST "$BASE/api/admin/notify-update" -H "Content-Type: application/json" -d "$BODY"

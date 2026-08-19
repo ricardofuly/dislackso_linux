@@ -64,13 +64,37 @@ function registerRoutes(app, ctx) {
   });
 
   /**
+   * Avisa todo mundo conectado agora que há uma versão nova do app pra
+   * baixar. Disparado pelo workflow `build-release.yml` do GitHub Actions,
+   * só depois que o instalador de cada plataforma já terminou de subir no
+   * Release — avisar antes disso deixaria quem clicasse em "atualizar" com
+   * um download quebrado por alguns minutos.
+   */
+  app.post('/api/admin/notify-update', (req, res) => {
+    try {
+      if (!requireAdminKey(req, res)) return;
+      const version = String(req.body.version || '').replace(/^v/, '').trim();
+      if (!version) return res.status(400).json({ error: 'versão vazia' });
+
+      io.emit('app:update', { version });
+      res.json({ ok: true, delivered: io.engine.clientsCount });
+    } catch (err) {
+      console.error('[admin:notify-update]', err);
+      res.status(500).json({ error: 'falha ao avisar' });
+    }
+  });
+
+  /**
    * Upload de avatar, banner ou ícone de servidor.
    *
-   * Volta como o mesmo data URL que chegou, sem reprocessar — é o que
-   * preserva GIF animado. Guardamos assim (embutido no próprio registro do
-   * usuário/servidor) e não em arquivo separado de propósito: o disco de um
-   * host como o Render é efêmero e some a cada redeploy, mas o banco é
-   * espelhado no Supabase — a imagem sobrevive junto.
+   * Guardamos os bytes num registro à parte (`db.images`, espelhado no
+   * Supabase junto do resto — sobrevive a um redeploy) e devolvemos só um id
+   * curto. É de propósito que a imagem NÃO fica embutida direto no usuário/
+   * servidor: esses registros viajam inteiros em várias mensagens de socket
+   * (login, presença, lista de membros), e um avatar de alguns MB ali
+   * estouraria o limite de tamanho de mensagem do socket.io pra qualquer um
+   * que estivesse no mesmo servidor. Como arquivo separado, servido sob
+   * demanda por `GET /api/image/:id`, cada `<img>` busca só a própria foto.
    */
   app.post('/api/upload', (req, res) => {
     try {
@@ -87,11 +111,23 @@ function registerRoutes(app, ctx) {
         return res.status(413).json({ error: `imagem acima de ${MAX_UPLOAD_BYTES / 1024 / 1024} MB` });
       }
 
-      res.json({ url: dataUrl });
+      const id = uid();
+      store.data.images[id] = { mime: match[1], data: match[2] };
+      store.save();
+      res.json({ url: `/api/image/${id}` });
     } catch (err) {
       console.error('[upload]', err);
       res.status(500).json({ error: 'falha ao salvar' });
     }
+  });
+
+  /** Serve uma imagem enviada por upload. Sem cabeçalho de expiração maior: o id muda a cada novo envio. */
+  app.get('/api/image/:id', (req, res) => {
+    const entry = store.data.images[req.params.id];
+    if (!entry) return res.status(404).end();
+    res.set('Content-Type', entry.mime);
+    res.set('Cache-Control', 'public, max-age=31536000, immutable');
+    res.send(Buffer.from(entry.data, 'base64'));
   });
 }
 
