@@ -77,6 +77,7 @@ export function ChannelSidebar({ onOpenSettings }: ChannelSidebarProps) {
           <VoiceChannelRow
             key={channel.id}
             guildId={guild!.id}
+            ownerId={guild!.ownerId}
             channel={channel}
             occupants={presence[guild!.id]?.[channel.id] ?? []}
             active={room?.guildId === guild!.id && room.channelId === channel.id}
@@ -107,7 +108,7 @@ function UserCard({ onOpenSettings }: { onOpenSettings(section: string): void })
 
   return (
     <footer className="border-t border-line">
-      {inRoom && <CallBar onOpenSettings={onOpenSettings} />}
+      <CallBar inRoom={inRoom} onOpenSettings={onOpenSettings} />
 
       <div className="flex items-center gap-2 p-2">
         <button
