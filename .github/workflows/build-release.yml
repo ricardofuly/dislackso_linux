@@ -1,0 +1,3 @@
+git add .github/workflows/build-release.yml
+git commit -m "ci: adiciona workflow de build/publish multiplataforma (Windows + Linux)"
+git push origin master
