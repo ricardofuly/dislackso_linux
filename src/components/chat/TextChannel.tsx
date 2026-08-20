@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { SendHorizontal } from 'lucide-react';
 import { Avatar } from '@/components/ui/Avatar';
@@ -8,6 +8,8 @@ import { timeOfDay } from '@/lib/format';
 import { messageKey, useMessages } from '@/stores/messages';
 import { useGuilds } from '@/stores/guilds';
 import { sendMessage } from '@/features/messages/actions';
+import { FormattedText } from '@/components/ui/FormattedText';
+import { YouTubeCard, extractYouTubeVideoId, removeYouTubeLinks } from './YouTubeCard';
 import type { ChatMessage, PublicUser } from '@/types/api';
 
 const UNKNOWN: Pick<PublicUser, 'name' | 'avatar' | 'color'> = {
@@ -101,6 +103,11 @@ interface MessageRowProps {
 }
 
 function MessageRow({ message, author, grouped }: MessageRowProps) {
+  const youtubeVideoId = useMemo(() => extractYouTubeVideoId(message.text), [message.text]);
+  const displayText = useMemo(() => {
+    return youtubeVideoId ? removeYouTubeLinks(message.text) : message.text;
+  }, [message.text, youtubeVideoId]);
+
   return (
     <motion.article
       layout="position"
@@ -117,9 +124,13 @@ function MessageRow({ message, author, grouped }: MessageRowProps) {
             <time className="text-[11px] text-dim">{timeOfDay(message.createdAt)}</time>
           </div>
         )}
-        <p className="selectable text-[14px] leading-relaxed whitespace-pre-wrap text-text">
-          {message.text}
-        </p>
+        {displayText && (
+          <FormattedText
+            text={displayText}
+            className="selectable text-[14px] leading-relaxed whitespace-pre-wrap text-text"
+          />
+        )}
+        {youtubeVideoId && <YouTubeCard videoId={youtubeVideoId} />}
       </div>
     </motion.article>
   );
