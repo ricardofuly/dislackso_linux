@@ -10,7 +10,7 @@ function getDuckFactor(setting: string | boolean): number {
   if (setting === 'duck10') return 0.1;
   if (setting === 'duck25' || setting === true) return 0.25;
   if (setting === 'duck50') return 0.5;
-  return 0.25;
+  return 1;
 }
 
 /**

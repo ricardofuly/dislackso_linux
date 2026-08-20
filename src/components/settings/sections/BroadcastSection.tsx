@@ -65,14 +65,14 @@ export function BroadcastSection() {
               ? s.duckVoiceOnShare
                 ? 'duck25'
                 : 'off'
-              : s.duckVoiceOnShare || 'duck25'
+              : s.duckVoiceOnShare || 'off'
           }
           options={[
-            { value: 'mute', label: 'Silenciar chamada (Sem retorno)' },
-            { value: 'duck10', label: 'Abaixar bastante (10%)' },
-            { value: 'duck25', label: 'Abaixar moderado (25%)' },
+            { value: 'off', label: 'Não alterar volume (Recomendado — isolamento automático)' },
             { value: 'duck50', label: 'Abaixar leve (50%)' },
-            { value: 'off', label: 'Não alterar volume' },
+            { value: 'duck25', label: 'Abaixar moderado (25%)' },
+            { value: 'duck10', label: 'Abaixar bastante (10%)' },
+            { value: 'mute', label: 'Silenciar chamada' },
           ]}
           onChange={(value) => s.set('duckVoiceOnShare', value)}
         />

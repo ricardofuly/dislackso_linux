@@ -97,7 +97,10 @@
       "category": "Network",
       "synopsis": "Servidores privados, compartilhamento de tela em alta resolução e anotação ao vivo",
       "artifactName": "${productName}-${version}.${ext}",
-      "maintainer": "Ricardo Fuly lricardofs@gmail.com"
+      "maintainer": "Ricardo Fuly lricardofs@gmail.com",
+      "desktop": {
+        "StartupWMClass": "dislackso"
+      }
     },
     "mac": {
       "target": [
