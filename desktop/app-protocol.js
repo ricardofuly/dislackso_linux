@@ -33,6 +33,7 @@ function registerScheme() {
         standard: true, // dá origem de verdade, e com ela localStorage por origem
         secure: true, // conta como contexto seguro: getUserMedia e getDisplayMedia
         supportFetchAPI: true,
+        corsEnabled: true,
         stream: true,
         codeCache: true,
       },

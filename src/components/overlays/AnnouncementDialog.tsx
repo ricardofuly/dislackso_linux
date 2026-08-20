@@ -1,5 +1,6 @@
 import { Megaphone } from 'lucide-react';
 import { Modal } from '@/components/ui/Modal';
+import { FormattedText } from '@/components/ui/FormattedText';
 import { useAnnouncements } from '@/stores/announcements';
 
 /**
@@ -26,7 +27,7 @@ export function AnnouncementDialog() {
         <span className="grid size-10 shrink-0 place-items-center rounded-full bg-accent-soft text-accent">
           <Megaphone size={20} />
         </span>
-        <p className="text-[14px] whitespace-pre-wrap text-text">{current?.message}</p>
+        <FormattedText text={current?.message ?? ''} className="text-[14px] whitespace-pre-wrap text-text" />
       </div>
     </Modal>
   );

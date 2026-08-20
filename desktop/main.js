@@ -497,7 +497,7 @@ ipcMain.handle('dev:clearLocalData', async () => {
 });
 
 ipcMain.handle('shell:openExternal', (_e, url) => {
-  if (/^https?:\/\//i.test(String(url))) shell.openExternal(url);
+  if (/^(?:https?:\/\/|mailto:)/i.test(String(url))) shell.openExternal(url);
 });
 
 /** Traz a janela principal pra frente — usado quando chega um aviso de admin com "forçar foco". */
