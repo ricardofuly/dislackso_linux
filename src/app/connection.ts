@@ -2,6 +2,7 @@ import { connectSocket } from '@/lib/socket/client';
 import { ask } from '@/lib/socket/client';
 import { annot } from '@/lib/annot/engine';
 import { feedback } from '@/lib/feedback';
+import { isDesktop } from '@/lib/platform';
 import { voice } from '@/lib/rtc/engine';
 import { useAnnouncements } from '@/stores/announcements';
 import { useGuilds } from '@/stores/guilds';
@@ -10,6 +11,7 @@ import { useRoom } from '@/stores/room';
 import { savedCredentials, useSession } from '@/stores/session';
 import { settings } from '@/stores/settings';
 import { toast } from '@/stores/toasts';
+import { useUpdateAnnounce } from '@/stores/updateAnnounce';
 import type { SessionPayload } from '@/types/api';
 import { joinVoice, leaveVoice } from '@/features/voice/actions';
 
@@ -76,6 +78,18 @@ export function startConnection(): void {
     toast('Um servidor foi excluído pelo dono.');
   });
 
+  socket.on('guild:kicked', ({ guildId }) => {
+    const guild = useGuilds.getState().guilds.find((g) => g.id === guildId);
+    if (useRoom.getState().room?.guildId === guildId) void leaveVoice({ silent: true });
+    useGuilds.getState().remove(guildId);
+    toast(guild ? `Você foi removido de ${guild.name}.` : 'Você foi removido de um servidor.');
+  });
+
+  // O dono me mandou para outra sala. O join normal cuida de sair da atual.
+  socket.on('voice:moved', ({ guildId, channelId }) => {
+    void joinVoice(guildId, channelId).then(() => toast('O dono do servidor te moveu de sala.'));
+  });
+
   socket.on('guild:online', ({ guildId, online }) => useGuilds.getState().setOnline(guildId, online));
 
   socket.on('presence:update', ({ guildId, presence }) =>
@@ -133,6 +147,17 @@ export function startConnection(): void {
   /* ---------------------------------------------------------- avisos --- */
 
   socket.on('admin:message', (payload) => useAnnouncements.getState().enqueue(payload));
+
+  // Empurrado quando uma release nova termina de publicar os instaladores
+  // (ver .github/workflows/build-release.yml). Só faz sentido no app
+  // instalado — na web a próxima visita já carrega a versão nova sozinha.
+  socket.on('app:update', ({ version }) => {
+    if (!isDesktop()) return;
+    feedback('announce');
+    toast(`Nova versão ${version} disponível — clique para atualizar.`, 120000, () => {
+      useUpdateAnnounce.getState().show();
+    });
+  });
 
   /* --------------------------------------------------------- anotação --- */
 

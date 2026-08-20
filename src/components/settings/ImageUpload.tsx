@@ -1,61 +1,11 @@
 import { useState } from 'react';
 import { Trash2, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
-import { SettingRow, Swatches } from '../SettingRow';
 import { assetUrl } from '@/lib/env';
-import { initials } from '@/lib/format';
 import { MAX_UPLOAD_BYTES, pickImage, updateProfile, uploadImage } from '@/features/profile/actions';
 import { useSession } from '@/stores/session';
-import { ACCENTS } from '@/stores/settings';
 import { toast } from '@/stores/toasts';
 import { cn } from '@/lib/cn';
-
-/** Foto, banner e cor do perfil. */
-export function ProfileSection() {
-  const me = useSession((s) => s.me);
-  if (!me) return null;
-
-  return (
-    <>
-      <SettingRow
-        title="Foto de perfil"
-        desc="PNG, JPG, WEBP ou GIF animado. Até 12 MB."
-        stack
-      >
-        <ImageUpload
-          kind="avatar"
-          current={me.avatar}
-          label="Enviar imagem"
-          fallbackColor={me.color}
-          fallbackText={initials(me.name)}
-        />
-      </SettingRow>
-
-      <SettingRow title="Banner" desc="Aparece atrás da sua foto. Até 12 MB." stack>
-        <ImageUpload
-          kind="banner"
-          current={me.banner}
-          label="Enviar banner"
-          fallbackColor={me.accent || me.color}
-          fallbackText="sem banner"
-          wide
-        />
-      </SettingRow>
-
-      <SettingRow
-        title="Cor do perfil"
-        desc="Usada no banner quando você não tem imagem."
-        stack
-      >
-        <Swatches
-          colors={ACCENTS}
-          value={me.accent || me.color}
-          onPick={(color) => void updateProfile({ accent: color })}
-        />
-      </SettingRow>
-    </>
-  );
-}
 
 interface ImageUploadProps {
   kind: 'avatar' | 'banner';
@@ -66,8 +16,8 @@ interface ImageUploadProps {
   wide?: boolean;
 }
 
-/** Prévia + enviar + remover. O fluxo é o mesmo para foto e banner. */
-function ImageUpload({ kind, current, label, fallbackColor, fallbackText, wide }: ImageUploadProps) {
+/** Prévia + enviar + remover. O fluxo é o mesmo para foto de perfil e banner. */
+export function ImageUpload({ kind, current, label, fallbackColor, fallbackText, wide }: ImageUploadProps) {
   const me = useSession((s) => s.me);
   const [busy, setBusy] = useState(false);
 
@@ -92,9 +42,17 @@ function ImageUpload({ kind, current, label, fallbackColor, fallbackText, wide }
           'grid place-items-center overflow-hidden bg-cover bg-center text-[11px] text-white/80',
           wide ? 'h-24 w-full rounded-[var(--radius-md)]' : 'size-20 rounded-full',
         )}
+        /*
+          `backgroundColor`, nunca o atalho `background`: o React limpa uma
+          propriedade que sai do objeto atribuindo string vazia, e
+          `style.background = ''` reseta TODAS as sub-propriedades — inclusive
+          o backgroundImage recém-definido na mesma atualização. Era por isso
+          que enviar uma foto nova "funcionava" mas a prévia daqui ficava em
+          branco.
+        */
         style={{
           backgroundImage: current ? `url('${assetUrl(current)}')` : undefined,
-          background: current ? undefined : fallbackColor,
+          backgroundColor: current ? undefined : fallbackColor,
         }}
       >
         {!current && fallbackText}

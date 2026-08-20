@@ -1,3 +1,101 @@
+### Versão 4.1.0
+
+Foco numa correção crítica de persistência (contas e fotos que sumiam sozinhas), controle de
+verdade pro dono do servidor, e três bugs de sala corrigidos na raiz.
+
+**Correção crítica — contas e fotos sumindo sozinhas**
+
+* Causa raiz de "todo mundo perdeu a conta" e das fotos somem a cada atualização do servidor:
+  quando a leitura do Supabase falhava num redeploy (projeto hibernado no plano gratuito, rede
+  fria no boot do Render), o servidor subia com o banco vazio — e o primeiro salvamento gravava
+  esse vazio por cima do estado de todo mundo, sem volta. Agora o espelhamento tem quatro
+  defesas em camadas: nunca grava antes de conseguir ler o remoto pelo menos uma vez; nunca
+  grava um banco sem usuários por cima de um estado que já teve usuários; insiste várias vezes
+  antes de desistir de restaurar (e continua tentando em segundo plano depois); e salva de
+  forma síncrona ao fechar o processo, pra nada se perder na janela entre uma mensagem/foto
+  chegar e o servidor ser reiniciado no deploy seguinte.
+
+**Administração**
+
+* **Dono do servidor ganha controle de verdade**, tudo pelo botão direito: expulsar um membro
+  (derruba as sessões dela, inclusive da sala de voz) e mover alguém de sala de voz. Criar
+  canal deixou de ser liberado pra qualquer membro — agora segue a mesma regra de excluir,
+  convidar e editar.
+* Uma coroa aparece ao lado do nome do dono, na lista de membros e nas salas de voz.
+
+**Sala de voz e transmissão**
+
+* **Áudio sumia ao abrir o chat:** abrir um canal de texto durante uma chamada silenciava todo
+  mundo pro seu lado (mas todo mundo continuava te ouvindo). Corrigido.
+* **Tela cheia ficava preta:** entrar em tela cheia (ou sair dela) podia deixar o vídeo em
+  preto, sem recuperar sozinho — só voltar pra grade "consertava". Corrigido pra sempre
+  recuperar o vídeo ao trocar de modo.
+* **Fita de participantes amassada:** a fileira de participantes sob o tile destacado ficava
+  com vão sobrando e uma barra de rolagem vertical sem motivo. Corrigido.
+* **Mudo e ensurdecido agora são preferência de verdade:** ficam salvos e os dois botões são
+  fixos no seu cartão de conta, dentro e fora de chamada. Entrar numa sala respeita como você
+  estava antes (quem se mutou entra mudo, quem ensurdeceu entra ensurdecido) — sair da sala não
+  zera mais isso.
+
+**Perfil**
+
+* **Prévia de avatar/banner em branco** na tela de conta, mesmo com a foto valendo no resto do
+  app. Corrigido.
+* **Imagens de perfil gigantes no banco:** uma foto de celular de 10 MB virava ~13 MB dentro do
+  banco espelhado no Supabase a cada salvamento — um dos fatores por trás da corrupção de dados
+  descrita acima. Agora a imagem é reduzida no próprio app pro tamanho em que é exibida antes de
+  subir (avatar/ícone 512px, banner 1920px); GIF não é mexido, pra não perder a animação.
+
+### Versão 4.0.3
+
+Foco em administração, tela cheia de verdade na transmissão e uma correção séria de
+persistência de imagens.
+
+**Administração**
+
+* **Conta administradora**, configurável no painel de desenvolvedor (`Ctrl+Alt+Shift+D` →
+  Administração): essa conta passa por qualquer restrição de "só o dono pode" em qualquer
+  servidor — excluir servidor, excluir sala, gerar convite. O ID da própria conta fica
+  disponível pra copiar em *Configurações › Minha conta*.
+* **Excluir canais de texto e salas de voz**, finalmente com um jeito de fazer isso pela
+  interface: botão direito no canal → Excluir.
+
+**Tela cheia, de verdade**
+
+* Clicar em "Tela cheia" agora esconde o resto da interface (sidebar, chat, membros) e
+  deixa só a transmissão, tela toda — como no YouTube. Os controles aparecem ao mexer o
+  mouse e somem sozinhos depois de alguns segundos parado. Esc sai a qualquer momento, e
+  se quem está transmitindo parar no meio, sai sozinho em vez de deixar uma tela preta.
+* **Atalho `Shift+R`** reinicia o app instalado — útil pra testar uma atualização recém
+  baixada sem fechar e abrir na mão.
+
+**Correção séria — imagens de perfil sumindo**
+
+* Avatar, banner e ícone de servidor tinham dois problemas em cadeia: o servidor salvava
+  em disco, que é efêmero no Render (some a cada redeploy) — e a correção inicial disso
+  (embutir a imagem direto no registro do usuário) estourava o limite de tamanho de
+  mensagem do socket.io, fazendo salvar banner "não dar em nada". Agora a imagem vira um
+  registro próprio, persistido/espelhado no Supabase igual o resto do banco, servido sob
+  demanda por um link curto — o socket nunca carrega o arquivo inteiro.
+
+**Interface**
+
+* Ícone da bandeja do sistema, que nunca aparecia: o arquivo do ícone não estava sendo
+  incluído no app empacotado.
+* *Minha conta* e *Perfil* viraram uma seção só — foto e banner ficam editáveis ali dentro.
+* Tela de Atualizações reformulada: link pras notas da versão instalada em vez de texto
+  colado, e "Procurar atualizações" abre uma janela própria que acompanha checar → achar →
+  baixar → reiniciar, tudo automático ao terminar.
+* Aviso automático (com som) pra quem estiver com o app aberto quando uma versão nova é
+  publicada — clicar já baixa e reinicia sozinho. Builda em CI agora (Windows e Linux, via
+  GitHub Actions), então esse aviso só dispara depois que o instalador de cada plataforma
+  termina de subir.
+* Avatares cortados na fita de participantes e na grade, e um scroll vertical indevido:
+  ajustes de tamanho e de onde cortar (ou não) o conteúdo de cada tile.
+* O anel verde de "está falando" piscava a cada micropausa entre sílabas — agora tem uma
+  margem de meio segundo antes de apagar, então acende uma vez e segura enquanto a
+  conversa continua, em vez de piscar sem parar.
+
 ### Versão 4.0.2
 
 Correções de interface da 4.0/4.0.1 e alguns pedidos recorrentes na chamada de voz.

@@ -9,6 +9,8 @@ interface SessionState {
   phase: Phase;
   me: PublicUser | null;
   friends: Set<string>;
+  /** Passa por qualquer "só o dono pode" em qualquer servidor — ver painel de dev. */
+  isAdmin: boolean;
   /** `false` enquanto o socket está caído — a interface mostra "reconectando". */
   connected: boolean;
   /** Sala a retomar depois de uma reconexão. */
@@ -35,6 +37,7 @@ export const useSession = create<SessionState>()((set) => ({
   phase: 'booting',
   me: storage.get<PublicUser | null>(KEYS.profileCache, null),
   friends: new Set(storage.get<string[]>(KEYS.friendsCache, [])),
+  isAdmin: false,
   connected: false,
   rejoin: null,
 
@@ -51,6 +54,7 @@ export const useSession = create<SessionState>()((set) => ({
     set({
       me: payload.user,
       friends: new Set(payload.friends),
+      isAdmin: payload.isAdmin,
       phase: 'ready',
       connected: true,
     });

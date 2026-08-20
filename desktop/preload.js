@@ -36,6 +36,8 @@ contextBridge.exposeInMainWorld('desktop', {
   restart: () => ipcRenderer.invoke('app:restart'),
   goHome: () => ipcRenderer.invoke('app:home'),
   openExternal: (url) => ipcRenderer.invoke('shell:openExternal', url),
+  /** Alterna a janela pra tela cheia de verdade; devolve o novo estado. */
+  toggleFullscreen: () => ipcRenderer.invoke('app:toggleFullscreen'),
   /** Traz a janela pra frente — usado quando chega um aviso de admin forçando atenção. */
   focusWindow: () => ipcRenderer.invoke('app:focus'),
 

@@ -1,5 +1,6 @@
 import { ask } from '@/lib/socket/client';
 import { feedback } from '@/lib/feedback';
+import { desktop, isDesktop } from '@/lib/platform';
 import { voice } from '@/lib/rtc/engine';
 import { annot } from '@/lib/annot/engine';
 import { useGuilds } from '@/stores/guilds';
@@ -84,4 +85,22 @@ export function unwatchPeer(sid: string): void {
 export function toggleScreen(): void {
   if (voice.screen.active) voice.screen.stop();
   else void voice.screen.start();
+}
+
+/**
+ * Tela cheia de verdade num tile — como o YouTube: só ele na tela, o resto
+ * da interface some. É estado do app (não a Fullscreen API do navegador,
+ * que no Electron não reage de forma confiável), com um bônus quando dá:
+ * pedir pra própria janela também ficar em tela cheia do sistema, ganhando
+ * a faixa que a barra de título ocupava.
+ */
+export function enterFullscreen(id: string): void {
+  useRoom.getState().enterFullscreen(id);
+  if (isDesktop()) void desktop()?.toggleFullscreen();
+}
+
+/** Sempre os mesmos dois passos da entrada, na ordem inversa. */
+export function exitFullscreen(): void {
+  useRoom.getState().exitFullscreen();
+  if (isDesktop()) void desktop()?.toggleFullscreen();
 }

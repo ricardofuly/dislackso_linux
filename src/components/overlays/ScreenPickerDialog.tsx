@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Grid2x2, Monitor } from 'lucide-react';
+import { CheckCircle2, Grid2x2, Monitor } from 'lucide-react';
 import { Modal } from '@/components/ui/Modal';
 import { Toggle } from '@/components/ui/Toggle';
 import { cn } from '@/lib/cn';
@@ -123,15 +123,32 @@ function SourceCard({ source, selected, onClick, onDoubleClick }: SourceCardProp
       onClick={onClick}
       onDoubleClick={onDoubleClick}
       className={cn(
-        'flex flex-col overflow-hidden rounded-[var(--radius-sm)] ring-1 transition-all',
-        'duration-(--duration-fast) hover:ring-accent',
-        selected ? 'ring-2 ring-accent' : 'ring-line',
+        'relative flex scale-100 flex-col overflow-hidden rounded-[var(--radius-sm)] ring-1',
+        'transition-all duration-(--duration-fast) hover:ring-accent',
+        selected ? 'ring-3 ring-accent' : 'ring-line',
       )}
     >
-      <span className="aspect-video w-full bg-bg-1">
+      <span className="relative aspect-video w-full bg-bg-1">
         <img src={source.thumbnail} alt="" className="size-full object-cover" draggable={false} />
+        <span
+          className={cn(
+            'absolute inset-0 bg-accent/25 transition-opacity duration-(--duration-fast)',
+            selected ? 'opacity-100' : 'opacity-0',
+          )}
+        />
+        {selected && (
+          <CheckCircle2
+            size={26}
+            className="absolute top-1.5 right-1.5 rounded-full bg-bg-0 text-accent drop-shadow"
+          />
+        )}
       </span>
-      <span className="flex items-center gap-1.5 bg-bg-3 px-2 py-1.5 text-left text-[12px] text-text">
+      <span
+        className={cn(
+          'flex items-center gap-1.5 px-2 py-1.5 text-left text-[12px]',
+          selected ? 'bg-accent text-accent-fg' : 'bg-bg-3 text-text',
+        )}
+      >
         {source.icon && <img src={source.icon} alt="" className="size-3.5 shrink-0" />}
         <span className="truncate">{source.name}</span>
       </span>

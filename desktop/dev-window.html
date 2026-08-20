@@ -177,6 +177,20 @@
   </section>
 
   <section class="dev-section">
+    <h2>Administração</h2>
+    <div class="set-row stack">
+      <div class="info"><b>Conta administradora</b><span>Essa conta passa por qualquer restrição de "só o dono pode" em
+        qualquer servidor — excluir servidor, excluir sala, gerar convite. Pegue o ID em Configurações › Minha conta
+        › ID da conta, no app principal. Deixe vazio e salve pra remover.</span></div>
+      <div class="ctrl">
+        <input id="admin-user-id" type="text" placeholder="ID do usuário">
+        <button id="btn-save-admin-user" class="btn btn-primary">Salvar</button>
+      </div>
+    </div>
+    <p id="admin-user-msg" class="dev-note"></p>
+  </section>
+
+  <section class="dev-section">
     <h2>Dados locais</h2>
     <div class="set-row">
       <div class="info"><b>Limpar tudo</b><span>Apaga sessão, cache de perfil/servidores e preferências salvas neste app.</span></div>

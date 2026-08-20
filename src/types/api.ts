@@ -71,6 +71,8 @@ export interface SessionPayload {
   sid: string;
   token: string;
   friends: string[];
+  /** Passa por qualquer "só o dono pode" em qualquer servidor — ver painel de dev. */
+  isAdmin: boolean;
 }
 
 export interface AdminAnnouncement {

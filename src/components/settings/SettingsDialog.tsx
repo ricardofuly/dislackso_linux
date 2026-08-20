@@ -1,13 +1,12 @@
 import { motion } from 'motion/react';
 import {
-  Headphones, Image, Info, Keyboard, Monitor, MonitorUp, Palette, Pen, RefreshCw, Sparkles, User, X,
+  Headphones, Info, Keyboard, Monitor, MonitorUp, Palette, Pen, RefreshCw, Sparkles, User, X,
 } from 'lucide-react';
 import { Dialog } from 'radix-ui';
 import { IconButton } from '@/components/ui/Button';
 import { isDesktop } from '@/lib/platform';
 import { cn } from '@/lib/cn';
 import { AccountSection } from './sections/AccountSection';
-import { ProfileSection } from './sections/ProfileSection';
 import { VoiceSection } from './sections/VoiceSection';
 import { BroadcastSection } from './sections/BroadcastSection';
 import { AnnotationsSection } from './sections/AnnotationsSection';
@@ -31,7 +30,6 @@ const GROUPS: { label: string; items: SectionDef[] }[] = [
     label: 'Usuário',
     items: [
       { id: 'conta', label: 'Minha conta', icon: User, render: () => <AccountSection /> },
-      { id: 'perfil', label: 'Perfil', icon: Image, render: () => <ProfileSection /> },
     ],
   },
   {

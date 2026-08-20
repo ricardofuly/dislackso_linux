@@ -89,15 +89,26 @@ function isHexColor(value) {
 }
 
 /**
- * Só aceita caminhos que nós mesmos geramos, nunca URL arbitrária.
+ * Só aceita imagens que nós mesmos validamos, nunca URL arbitrária.
  * Devolve `undefined` (e não `''`) quando o valor é inválido, para o chamador
  * distinguir "apagar a imagem" de "esse valor não serve".
+ *
+ * Aceita dois formatos: `/uploads/...` (uploads antigos, de quando a imagem
+ * ia pro disco) e `/api/image/<id>` (formato atual — ver `http/routes.js`).
+ * Note que NÃO aceita `data:` URL direto: um avatar de alguns MB embutido
+ * assim em `user.avatar` viajaria inteiro em cada mensagem de socket que
+ * incluísse esse usuário (login, presença, lista de membros...) e estoura o
+ * `maxHttpBufferSize` do socket.io — por isso a imagem fica num registro à
+ * parte (`db.images`), e só o id curto circula pelo resto do protocolo.
  */
 function cleanAssetPath(value) {
   if (value === null || value === '') return '';
-  const ok = typeof value === 'string'
-    && /^\/uploads\/[A-Za-z0-9_-]+\.(png|jpg|gif|webp)$/.test(value);
-  return ok ? value : undefined;
+  if (typeof value !== 'string') return undefined;
+
+  if (/^\/uploads\/[A-Za-z0-9_-]+\.(png|jpg|gif|webp)$/.test(value)) return value;
+  if (/^\/api\/image\/[A-Za-z0-9-]+$/.test(value)) return value;
+
+  return undefined;
 }
 
 module.exports = {

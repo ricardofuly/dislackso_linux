@@ -8,7 +8,7 @@ import { cn } from '@/lib/cn';
 import { countLive, useGuilds } from '@/stores/guilds';
 import { useRoom } from '@/stores/room';
 import { CreateGuildDialog, JoinGuildDialog } from '@/components/overlays/GuildDialogs';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { Guild } from '@/types/api';
 
 /**
@@ -69,6 +69,9 @@ interface GuildButtonProps {
 
 function GuildButton({ guild, active, live, onClick }: GuildButtonProps) {
   const inRoom = useRoom((s) => s.room?.guildId) === guild.id;
+  const [iconBroken, setIconBroken] = useState(false);
+  useEffect(() => setIconBroken(false), [guild.icon]);
+  const showIcon = Boolean(guild.icon) && !iconBroken;
 
   return (
     <Tip label={guild.name} side="right">
@@ -94,8 +97,14 @@ function GuildButton({ guild, active, live, onClick }: GuildButtonProps) {
           />
         )}
 
-        {guild.icon ? (
-          <img src={assetUrl(guild.icon)} alt="" className="size-full object-cover" draggable={false} />
+        {showIcon ? (
+          <img
+            src={assetUrl(guild.icon)}
+            alt=""
+            className="size-full object-cover"
+            draggable={false}
+            onError={() => setIconBroken(true)}
+          />
         ) : (
           initials(guild.name)
         )}

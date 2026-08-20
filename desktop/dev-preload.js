@@ -17,6 +17,8 @@ contextBridge.exposeInMainWorld('desktopDev', {
   openDataFolder: () => ipcRenderer.invoke('dev:openDataFolder'),
   clearLocalData: () => ipcRenderer.invoke('dev:clearLocalData'),
   broadcast: (message, forceFocus) => ipcRenderer.invoke('dev:broadcast', { message, forceFocus }),
+  getAdminUser: () => ipcRenderer.invoke('dev:getAdminUser'),
+  setAdminUser: (userId) => ipcRenderer.invoke('dev:setAdminUser', userId),
 
   update: {
     state: () => ipcRenderer.invoke('update:state'),

@@ -19,7 +19,8 @@ const MAX_ICON_BYTES = 8 * 1024 * 1024;
  */
 export function ServerSettingsDialog({ guild, onClose }: { guild: Guild | null; onClose(): void }) {
   const me = useSession((s) => s.me);
-  const isOwner = Boolean(guild && me?.id === guild.ownerId);
+  const isAdmin = useSession((s) => s.isAdmin);
+  const isOwner = Boolean(guild && me?.id === guild.ownerId) || isAdmin;
 
   const [name, setName] = useState('');
   const [icon, setIcon] = useState('');

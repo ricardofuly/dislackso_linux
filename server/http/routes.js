@@ -1,16 +1,13 @@
 'use strict';
 
 /**
- * As três rotas HTTP do servidor. Tudo o mais acontece pelo socket.
+ * As rotas HTTP do servidor. Tudo o mais acontece pelo socket.
  */
 
-const crypto = require('crypto');
-const fs = require('fs');
-const path = require('path');
 const { IMAGE_TYPES, MAX_UPLOAD_BYTES, cleanMultiline, uid } = require('../util');
 
 function registerRoutes(app, ctx) {
-  const { store, uploadDir, adminKey, io } = ctx;
+  const { store, adminKey, io } = ctx;
 
   app.get('/api/health', (_req, res) => {
     // "supabase: false" num serviço no Render explica sozinho contas que
@@ -19,6 +16,13 @@ function registerRoutes(app, ctx) {
     res.json({ ok: true, ...store.health() });
   });
 
+  /** Toda rota de admin exige a mesma chave compartilhada — sem ela, nem tenta. */
+  function requireAdminKey(req, res) {
+    if (!adminKey) { res.status(503).json({ error: 'ADMIN_KEY não configurado no servidor' }); return false; }
+    if (String((req.body || {}).key || '') !== adminKey) { res.status(403).json({ error: 'chave inválida' }); return false; }
+    return true;
+  }
+
   /**
    * Aviso para todo mundo conectado agora, disparado pelo painel de
    * desenvolvedor do app desktop. Protegido por chave compartilhada, não por
@@ -26,14 +30,11 @@ function registerRoutes(app, ctx) {
    */
   app.post('/api/admin/broadcast', (req, res) => {
     try {
-      if (!adminKey) return res.status(503).json({ error: 'ADMIN_KEY não configurado no servidor' });
-      const { key, message, forceFocus } = req.body || {};
-      if (String(key || '') !== adminKey) return res.status(403).json({ error: 'chave inválida' });
-
-      const text = cleanMultiline(message, 2000);
+      if (!requireAdminKey(req, res)) return;
+      const text = cleanMultiline(req.body.message, 2000);
       if (!text) return res.status(400).json({ error: 'mensagem vazia' });
 
-      io.emit('admin:message', { id: uid(), message: text, forceFocus: !!forceFocus, at: Date.now() });
+      io.emit('admin:message', { id: uid(), message: text, forceFocus: !!req.body.forceFocus, at: Date.now() });
       res.json({ ok: true, delivered: io.engine.clientsCount });
     } catch (err) {
       console.error('[admin:broadcast]', err);
@@ -42,10 +43,58 @@ function registerRoutes(app, ctx) {
   });
 
   /**
+   * Lê ou define qual usuário tem passe livre nas ações restritas ao dono
+   * (excluir servidor/sala, gerar convite) em qualquer servidor — pensado
+   * pra uma conta só, a de quem administra o app. `userId` omitido só lê o
+   * valor atual; `userId: ''` remove o admin.
+   */
+  app.post('/api/admin/admin-user', (req, res) => {
+    try {
+      if (!requireAdminKey(req, res)) return;
+      if (Object.prototype.hasOwnProperty.call(req.body, 'userId')) {
+        const userId = String(req.body.userId || '').trim();
+        store.data.adminUserId = userId || null;
+        store.save();
+      }
+      res.json({ ok: true, adminUserId: store.data.adminUserId || null });
+    } catch (err) {
+      console.error('[admin:admin-user]', err);
+      res.status(500).json({ error: 'falha ao salvar' });
+    }
+  });
+
+  /**
+   * Avisa todo mundo conectado agora que há uma versão nova do app pra
+   * baixar. Disparado pelo workflow `build-release.yml` do GitHub Actions,
+   * só depois que o instalador de cada plataforma já terminou de subir no
+   * Release — avisar antes disso deixaria quem clicasse em "atualizar" com
+   * um download quebrado por alguns minutos.
+   */
+  app.post('/api/admin/notify-update', (req, res) => {
+    try {
+      if (!requireAdminKey(req, res)) return;
+      const version = String(req.body.version || '').replace(/^v/, '').trim();
+      if (!version) return res.status(400).json({ error: 'versão vazia' });
+
+      io.emit('app:update', { version });
+      res.json({ ok: true, delivered: io.engine.clientsCount });
+    } catch (err) {
+      console.error('[admin:notify-update]', err);
+      res.status(500).json({ error: 'falha ao avisar' });
+    }
+  });
+
+  /**
    * Upload de avatar, banner ou ícone de servidor.
    *
-   * O cliente manda um data URL e gravamos o arquivo como veio, sem
-   * reprocessar — é o que preserva GIF animado.
+   * Guardamos os bytes num registro à parte (`db.images`, espelhado no
+   * Supabase junto do resto — sobrevive a um redeploy) e devolvemos só um id
+   * curto. É de propósito que a imagem NÃO fica embutida direto no usuário/
+   * servidor: esses registros viajam inteiros em várias mensagens de socket
+   * (login, presença, lista de membros), e um avatar de alguns MB ali
+   * estouraria o limite de tamanho de mensagem do socket.io pra qualquer um
+   * que estivesse no mesmo servidor. Como arquivo separado, servido sob
+   * demanda por `GET /api/image/:id`, cada `<img>` busca só a própria foto.
    */
   app.post('/api/upload', (req, res) => {
     try {
@@ -55,22 +104,30 @@ function registerRoutes(app, ctx) {
 
       const match = /^data:([^;,]+);base64,(.+)$/.exec(String(dataUrl || ''));
       if (!match) return res.status(400).json({ error: 'imagem invalida' });
+      if (!IMAGE_TYPES[match[1]]) return res.status(415).json({ error: 'use PNG, JPG, GIF ou WEBP' });
 
-      const ext = IMAGE_TYPES[match[1]];
-      if (!ext) return res.status(415).json({ error: 'use PNG, JPG, GIF ou WEBP' });
-
-      const buf = Buffer.from(match[2], 'base64');
-      if (buf.length > MAX_UPLOAD_BYTES) {
+      const approxBytes = Math.floor((match[2].length * 3) / 4);
+      if (approxBytes > MAX_UPLOAD_BYTES) {
         return res.status(413).json({ error: `imagem acima de ${MAX_UPLOAD_BYTES / 1024 / 1024} MB` });
       }
 
-      const name = `${crypto.randomBytes(12).toString('hex')}.${ext}`;
-      fs.writeFileSync(path.join(uploadDir, name), buf);
-      res.json({ url: `/uploads/${name}` });
+      const id = uid();
+      store.data.images[id] = { mime: match[1], data: match[2] };
+      store.save();
+      res.json({ url: `/api/image/${id}` });
     } catch (err) {
       console.error('[upload]', err);
       res.status(500).json({ error: 'falha ao salvar' });
     }
+  });
+
+  /** Serve uma imagem enviada por upload. Sem cabeçalho de expiração maior: o id muda a cada novo envio. */
+  app.get('/api/image/:id', (req, res) => {
+    const entry = store.data.images[req.params.id];
+    if (!entry) return res.status(404).end();
+    res.set('Content-Type', entry.mime);
+    res.set('Cache-Control', 'public, max-age=31536000, immutable');
+    res.send(Buffer.from(entry.data, 'base64'));
   });
 }
 

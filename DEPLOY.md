@@ -74,6 +74,34 @@ por login (o painel de dev não tem sessão de usuário). Passo único:
 Sem `ADMIN_KEY` configurado no Render, o botão de enviar aviso responde com
 erro (por design — não é possível mandar comunicado sem essa chave definida).
 
+A mesma chave também libera, na aba **Administração** do painel de dev, marcar
+uma conta (pelo ID, copiável em Configurações › Minha conta no app principal)
+como administradora do app — essa conta passa por qualquer "só o dono pode"
+em qualquer servidor (excluir servidor/sala, gerar convite).
+
+## Builds automáticos e aviso de atualização (GitHub Actions)
+
+Duas coisas acontecem sozinhas quando uma tag `vX.Y.Z` é enviada (o que
+`gh release create` já faz por baixo dos panos):
+
+1. `.github/workflows/build-release.yml` builda o instalador Windows e Linux
+   em paralelo e publica os dois na Release da tag — sem precisar rodar
+   `electron-builder` na sua própria máquina nem ter WSL pra gerar o Linux.
+2. Só depois que os dois builds terminam, um aviso automático é mandado pra
+   todo mundo com o app aberto ("nova versão disponível, clique pra
+   atualizar") — na hora certa, e não antes do instalador existir de verdade.
+
+Passo único pra ligar o aviso (o build em si já funciona sem isso):
+
+1. No GitHub: **Settings → Secrets and variables → Actions → New repository
+   secret**, nome `ADMIN_KEY`, valor a **mesma** chave configurada no Render.
+2. Opcional: secret `SERVER_URL` se o servidor não for o padrão
+   (`https://dislackso.onrender.com`).
+
+Sem o secret `ADMIN_KEY`, o build e a publicação continuam funcionando
+normalmente — só o aviso automático é pulado (o passo avisa isso no log, sem
+ficar vermelho no Actions).
+
 ## Limites importantes
 
 O plano gratuito do Supabase inclui 500 MB de banco, 50 mil usuários ativos

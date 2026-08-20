@@ -179,18 +179,27 @@ function createWindow() {
 /** O ícone da bandeja, criado uma vez só e reaproveitado a janela inteira vida do app. */
 function createTray() {
   if (tray) return;
-  const iconPath = path.join(__dirname, '..', 'build', process.platform === 'win32' ? 'icon.ico' : 'icon.png');
-  let icon = nativeImage.createFromPath(iconPath);
-  if (process.platform !== 'win32' && !icon.isEmpty()) icon = icon.resize({ width: 16, height: 16 });
+  try {
+    const iconPath = path.join(__dirname, '..', 'build', process.platform === 'win32' ? 'icon.ico' : 'icon.png');
+    let icon = nativeImage.createFromPath(iconPath);
+    if (icon.isEmpty()) throw new Error(`ícone vazio (arquivo não encontrado ou inválido em ${iconPath})`);
+    // Windows escolhe sozinho o tamanho certo dentro do .ico; nos outros, um
+    // ícone de bandeja grande demais aparece cortado ou borrado.
+    if (process.platform !== 'win32') icon = icon.resize({ width: 16, height: 16 });
 
-  tray = new Tray(icon);
-  tray.setToolTip('DiSlackso');
-  tray.setContextMenu(Menu.buildFromTemplate([
-    { label: 'Abrir DiSlackso', click: () => { if (win) { win.show(); win.focus(); } } },
-    { type: 'separator' },
-    { label: 'Sair', click: () => { isQuitting = true; app.quit(); } },
-  ]));
-  tray.on('click', () => { if (win) { win.isVisible() ? win.focus() : win.show(); } });
+    tray = new Tray(icon);
+    tray.setToolTip('DiSlackso');
+    tray.setContextMenu(Menu.buildFromTemplate([
+      { label: 'Abrir DiSlackso', click: () => { if (win) { win.show(); win.focus(); } } },
+      { type: 'separator' },
+      { label: 'Sair', click: () => { isQuitting = true; app.quit(); } },
+    ]));
+    tray.on('click', () => { if (win) { win.isVisible() ? win.focus() : win.show(); } });
+  } catch (err) {
+    // Sem ícone na bandeja o app continua funcionando normalmente — só o
+    // atalho de minimizar fica reduzido a fechar/reabrir pela barra de tarefas.
+    console.error('[tray] não consegui criar o ícone da bandeja:', err.message);
+  }
 }
 
 /**
@@ -429,6 +438,20 @@ ipcMain.handle('app:restart', () => { app.relaunch(); app.exit(0); });
 ipcMain.handle('app:home', () => { goHome(); });
 ipcMain.handle('app:info', () => buildAppInfo());
 
+/**
+ * Tela cheia de verdade, pela API nativa da janela — não pela Fullscreen API
+ * do HTML. É o próprio Electron quem intercepta `Element.requestFullscreen()`
+ * e faz a janela inteira entrar em tela cheia por baixo dos panos; chamar
+ * `setFullScreen` direto no processo principal é o mesmo resultado sem
+ * depender de como o Chromium decide tratar o pedido vindo do conteúdo.
+ */
+ipcMain.handle('app:toggleFullscreen', () => {
+  if (!win) return false;
+  const next = !win.isFullScreen();
+  win.setFullScreen(next);
+  return next;
+});
+
 /* ------------------------------------------------ painel de dev — IPC -- */
 
 function requireDevAuth() {
@@ -498,6 +521,34 @@ ipcMain.handle('dev:broadcast', async (_e, { message, forceFocus } = {}) => {
     return { ok: false, error: err.message };
   }
 });
+
+/**
+ * Quem tem passe livre nas ações restritas ao dono (excluir servidor/sala,
+ * gerar convite) em qualquer servidor. Pensado pra uma conta só — a de quem
+ * administra o app — e configurado por aqui porque o painel de dev já é a
+ * área protegida por senha; o ID vem do próprio app principal (Configurações
+ * › Minha conta › ID da conta).
+ */
+async function callAdminUserEndpoint(body) {
+  const cfg = readConfig();
+  if (!cfg.adminKey) return { ok: false, error: 'Defina a chave de admin primeiro (precisa bater com ADMIN_KEY no Render).' };
+  const base = cfg.serverUrlOverride || DEFAULT_SERVER_URL;
+  try {
+    const res = await fetch(`${base}/api/admin/admin-user`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ key: cfg.adminKey, ...body }),
+    });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok) return { ok: false, error: json.error || `HTTP ${res.status}` };
+    return { ok: true, adminUserId: json.adminUserId || null };
+  } catch (err) {
+    return { ok: false, error: err.message };
+  }
+}
+
+ipcMain.handle('dev:getAdminUser', () => { requireDevAuth(); return callAdminUserEndpoint({}); });
+ipcMain.handle('dev:setAdminUser', (_e, userId) => { requireDevAuth(); return callAdminUserEndpoint({ userId: String(userId || '') }); });
 
 ipcMain.handle('update:state', () => ({
   ...updateState, ...updateCapability(), current: app.getVersion(),

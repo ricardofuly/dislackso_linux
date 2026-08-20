@@ -69,6 +69,7 @@ export interface DesktopBridge {
   goHome(): Promise<void>;
   openExternal(url: string): Promise<void>;
   focusWindow(): Promise<void>;
+  toggleFullscreen(): Promise<boolean>;
   onPickScreen(fn: (sources: ScreenSource[]) => Promise<ScreenChoice | null>): void;
   retryScreenShareWithoutAudio(): Promise<boolean>;
   update: {
