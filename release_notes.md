@@ -1,3 +1,44 @@
+### Versão 4.2.0
+
+Foco em anotação ao vivo de verdade no desktop (canvas transparente por cima da tela, não mais
+preso à janela do app), links clicáveis no chat com prévia de vídeos do YouTube, e a correção
+definitiva do retorno de áudio ao compartilhar som do sistema.
+
+**Anotação ao vivo**
+
+* **Canvas transparente sobreposto à tela, no desktop.** Antes, o rabisco ficava preso à janela
+  do DiSlackso — quem via a transmissão por cima de outro programa, ou com outro app em tela
+  cheia, não via as anotações desenhadas por cima da tela real. Agora existe uma janela própria,
+  transparente e sempre no topo, que desenha direto sobre o que está sendo compartilhado, com uma
+  barrinha flutuante de ferramentas (caneta, cor, apagar) reposicionável em qualquer canto pela
+  tela de Configurações.
+* **Nameplate do autor:** cada traço carrega o nome de quem desenhou, exibido junto do rabisco —
+  antes não dava pra saber quem tinha desenhado o quê numa transmissão com várias pessoas anotando
+  ao mesmo tempo.
+* **Proteção anti-grief:** rabiscos agora passam por um limitador antes de aparecer na tela de
+  quem transmite — no máximo 120 pontos por segundo e 6 traços simultâneos por pessoa, e um teto
+  de 18 traços na tela toda. Quem está transmitindo também pode mutar o desenho de uma pessoa
+  específica sem tirar a permissão de todo mundo. Evita que uma pessoa mal-intencionada (ou um
+  mouse travado) suje a tela inteira de quem está compartilhando.
+
+**Chat**
+
+* **Links clicáveis e e-mails.** URLs (com ou sem `http(s)://`), domínios comuns (`.com`, `.io`,
+  `.gg` etc.) e e-mails soltos no texto de uma mensagem agora viram links de verdade, sem precisar
+  colar como link markdown. Vale também pros avisos do painel de desenvolvedor (Comunicados).
+* **Prévia de vídeos do YouTube.** Colar um link do YouTube (`watch`, `youtu.be`, `shorts` ou
+  `embed`) numa mensagem gera um card com miniatura, título e canal — o link em si some do texto
+  pra não poluir a mensagem.
+
+**Transmissão de tela**
+
+* **Correção do retorno de áudio:** compartilhar tela com áudio do sistema durante uma chamada
+  podia causar um eco perceptível da própria voz de volta pra quem estava ouvindo. Causa raiz: a
+  captura de áudio do sistema não tinha cancelamento de eco ligado (`echoCancellation: false`).
+  Agora vem ativado por padrão — e como isso já resolve o retorno na origem, abaixar a voz da
+  chamada durante o compartilhamento deixou de vir ligado por padrão em
+  *Configurações › Transmissão* (a opção continua existindo pra quem preferir abaixar mesmo assim).
+
 ### Versão 4.1.0
 
 Foco numa correção crítica de persistência (contas e fotos que sumiam sozinhas), controle de
