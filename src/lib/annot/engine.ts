@@ -1,7 +1,10 @@
 import type { AnnotStrokePatch, AnnotTool } from '@/types/api';
 import { tell } from '@/lib/socket/client';
-import { settings } from '@/stores/settings';
+import { settings, useSettings } from '@/stores/settings';
+import { useSession } from '@/stores/session';
 import { voice } from '@/lib/rtc/engine';
+import { isDesktop, desktop } from '@/lib/platform';
+import { antiGrief } from './antigrief';
 import { contentRect } from './geometry';
 import { wireDrawing } from './pointer';
 import { fadeAlpha, paintStroke, type Stroke } from './render';
@@ -33,6 +36,7 @@ interface Layer extends LayerHandle {
 export class AnnotEngine {
   private readonly layers = new Map<string, Layer>();
   private raf = 0;
+  private overlayWired = false;
 
   tool: AnnotTool = 'caneta';
   color = '#ff3b5c';
@@ -47,6 +51,35 @@ export class AnnotEngine {
     this.color = settings().annotColor;
     this.size = settings().annotSize;
     if (!this.raf) this.loop();
+
+    if (isDesktop() && !this.overlayWired) {
+      this.overlayWired = true;
+      desktop()?.overlay.onActionDraw((stroke) => {
+        const patch = stroke as AnnotStrokePatch;
+        patch.target = 'local';
+        this.applyRemote(patch);
+        tell('annot:draw', {
+          target: this.wireTarget('local'),
+          id: patch.id,
+          tool: patch.tool,
+          color: patch.color,
+          size: patch.size,
+          authorName: patch.authorName,
+          authorColor: patch.authorColor,
+          pts: patch.pts,
+          replace: patch.replace,
+          end: patch.end,
+        });
+      });
+
+      desktop()?.overlay.onActionClear(() => {
+        this.clear('local');
+      });
+
+      desktop()?.overlay.onToolbarHidden((hidden) => {
+        useSettings.getState().set('overlayToolbarVisible', !hidden);
+      });
+    }
   }
 
   /* --------------------------------------------------------- camadas --- */
@@ -99,32 +132,86 @@ export class AnnotEngine {
 
   /* -------------------------------------------------------- recepção --- */
 
-  applyRemote(patch: AnnotStrokePatch): void {
-    const layer = this.layers.get(this.localTarget(patch.target));
-    if (!layer) return;
+  applyRemote(patch: AnnotStrokePatch, fromSid = 'unknown'): void {
+    const isLocal = this.localTarget(patch.target) === 'local';
 
-    let stroke = layer.strokes.get(patch.id);
-    if (!stroke) {
-      stroke = {
-        id: patch.id,
-        tool: patch.tool || 'caneta',
-        color: patch.color || '#ff3b5c',
-        size: patch.size || 4,
-        pts: [],
-        born: performance.now(),
-      };
-      layer.strokes.set(patch.id, stroke);
+    // 1. Se for anotação na minha tela e o recurso estiver desativado nas preferências
+    if (isLocal && !settings().annotAllow) {
+      return;
     }
 
-    if (patch.replace) stroke.pts = patch.pts ?? [];
-    else stroke.pts.push(...(patch.pts ?? []));
-    stroke.born = performance.now();
+    const layer = this.layers.get(this.localTarget(patch.target));
+    const currentCount = layer ? layer.strokes.size : 0;
+
+    // 2. Proteção anti-grief no transmissor
+    if (isLocal && !antiGrief.validate(patch, currentCount, fromSid)) {
+      return;
+    }
+
+    if (layer) {
+      let stroke = layer.strokes.get(patch.id);
+      if (!stroke) {
+        stroke = {
+          id: patch.id,
+          tool: patch.tool || 'caneta',
+          color: patch.color || '#ff3b5c',
+          size: patch.size || 4,
+          authorName: patch.authorName,
+          authorColor: patch.authorColor,
+          pts: [],
+          born: performance.now(),
+        };
+        layer.strokes.set(patch.id, stroke);
+      }
+      if (patch.authorName) stroke.authorName = patch.authorName;
+      if (patch.authorColor) stroke.authorColor = patch.authorColor;
+
+      if (patch.replace) stroke.pts = patch.pts ?? [];
+      else stroke.pts.push(...(patch.pts ?? []));
+      stroke.born = performance.now();
+    }
+
+    // 3. Sincroniza em tempo real com a janela de overlay transparente no Desktop
+    if (isLocal && isDesktop() && voice.screen.active) {
+      void desktop()?.overlay.stroke(patch);
+    }
   }
 
   clear(targetId: string, broadcast = true): void {
-    const layer = this.layers.get(this.localTarget(targetId));
+    const target = this.localTarget(targetId);
+    const layer = this.layers.get(target);
     layer?.strokes.clear();
+    antiGrief.reset();
+
+    if (target === 'local' && isDesktop()) {
+      void desktop()?.overlay.clear();
+    }
+
     if (broadcast) tell('annot:clear', { target: this.wireTarget(targetId) });
+  }
+
+  /* ------------------------------------------- controle do overlay desktop -- */
+
+  startOverlay(): void {
+    if (isDesktop()) {
+      void desktop()?.overlay.start();
+      void desktop()?.overlay.setFade(Number(settings().annotFade) || 8);
+      const name = useSession.getState().me?.name || 'Você';
+      void desktop()?.overlay.setAuthor(name);
+      void desktop()?.overlay.setPosition(settings().overlayPosition);
+      if (settings().overlayToolbarVisible === false) {
+        void desktop()?.overlay.hideToolbar();
+      } else {
+        void desktop()?.overlay.showToolbar();
+      }
+    }
+  }
+
+  stopOverlay(): void {
+    if (isDesktop()) {
+      void desktop()?.overlay.clear();
+      void desktop()?.overlay.stop();
+    }
   }
 
   /** `'local'` → o meu sid, que é como os outros me conhecem. */
@@ -172,9 +259,10 @@ export class AnnotEngine {
       const alpha = fadeAlpha(stroke, now, fade);
       if (alpha === null) {
         layer.strokes.delete(id); // morreu de velho
+        antiGrief.onStrokeExpired(id);
         continue;
       }
-      paintStroke(ctx, stroke, rect, alpha);
+      paintStroke(ctx, stroke, rect, alpha, now);
     }
     ctx.globalAlpha = 1;
   }

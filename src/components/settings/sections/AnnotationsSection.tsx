@@ -5,6 +5,7 @@ import { ANNOT_COLORS } from '@/lib/annot/palette';
 import { annot } from '@/lib/annot/engine';
 import { voice } from '@/lib/rtc/engine';
 import { useSettings } from '@/stores/settings';
+import { desktop } from '@/lib/platform';
 
 const FADE_OPTIONS = [
   { value: 0, label: 'Nunca — só apagando' },
@@ -12,6 +13,13 @@ const FADE_OPTIONS = [
   { value: 8, label: '8 segundos' },
   { value: 15, label: '15 segundos' },
   { value: 30, label: '30 segundos' },
+];
+
+const POSITION_OPTIONS = [
+  { value: 'top-right', label: 'Topo Direito' },
+  { value: 'top-left', label: 'Topo Esquerdo' },
+  { value: 'top-center', label: 'Centro Topo' },
+  { value: 'bottom-center', label: 'Centro Baixo' },
 ];
 
 /** Quem pode rabiscar na minha tela, e com que cara a minha caneta começa. */
@@ -39,11 +47,28 @@ export function AnnotationsSection() {
         />
       </SettingRow>
 
+      <SettingRow
+        title="Posição da barra no desktop"
+        desc="Onde a barra flutuante de ferramentas deve aparecer na tela durante a transmissão."
+      >
+        <Select
+          value={s.overlayPosition}
+          options={POSITION_OPTIONS}
+          onChange={(value) => {
+            s.set('overlayPosition', value as 'top-right' | 'top-left' | 'top-center' | 'bottom-center');
+            void desktop()?.overlay.setPosition(value as string);
+          }}
+        />
+      </SettingRow>
+
       <SettingRow title="Sumir depois de" desc="Tempo até o traço desaparecer sozinho.">
         <Select
           value={s.annotFade}
           options={FADE_OPTIONS}
-          onChange={(value) => s.set('annotFade', Number(value))}
+          onChange={(value) => {
+            s.set('annotFade', Number(value));
+            void desktop()?.overlay.setFade(Number(value));
+          }}
         />
       </SettingRow>
 

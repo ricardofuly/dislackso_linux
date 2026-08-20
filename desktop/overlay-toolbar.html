@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DiSlackso Toolbar</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: transparent !important;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+
+    .toolbar-wrapper {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 4px;
+    }
+
+    .toolbar-pill {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 10px;
+      background: rgba(23, 24, 27, 0.94);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      border-radius: 999px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+      color: #dbdee1;
+      height: 42px;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      height: 28px;
+      padding: 0 10px;
+      border-radius: 6px;
+      border: none;
+      background: transparent;
+      color: #dbdee1;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s, transform 0.1s;
+      gap: 5px;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .btn:hover {
+      background: rgba(255, 255, 255, 0.14);
+      color: #ffffff;
+    }
+    .btn:active {
+      transform: scale(0.95);
+    }
+    .btn.active {
+      background: #5865f2;
+      color: #ffffff;
+    }
+    .btn.icon-only {
+      width: 28px;
+      padding: 0;
+      border-radius: 999px;
+      font-size: 14px;
+    }
+
+    .divider {
+      width: 1px;
+      height: 18px;
+      background: rgba(255, 255, 255, 0.15);
+      margin: 0 2px;
+      flex-shrink: 0;
+    }
+
+    .color-dot {
+      width: 18px;
+      height: 18px;
+      border-radius: 999px;
+      border: 2px solid transparent;
+      cursor: pointer;
+      transition: transform 0.15s, border-color 0.15s;
+      flex-shrink: 0;
+    }
+    .color-dot:hover {
+      transform: scale(1.2);
+    }
+    .color-dot.active {
+      border-color: #ffffff;
+      transform: scale(1.15);
+      box-shadow: 0 0 8px rgba(255, 255, 255, 0.5);
+    }
+
+    /* Botão miniatura quando recolhido */
+    .mini-toggle {
+      display: none;
+      width: 40px;
+      height: 40px;
+      border-radius: 999px;
+      background: #5865f2;
+      color: #ffffff;
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      box-shadow: 0 6px 22px rgba(88, 101, 242, 0.6);
+      cursor: pointer;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      transition: transform 0.15s;
+      flex-shrink: 0;
+    }
+    .mini-toggle:hover {
+      transform: scale(1.1);
+    }
+
+    body.collapsed .toolbar-pill {
+      display: none;
+    }
+    body.collapsed .mini-toggle {
+      display: flex;
+    }
+  </style>
+</head>
+<body>
+  <div class="toolbar-wrapper">
+    <button id="btn-expand" class="mini-toggle" title="Abrir ferramentas de desenho">✎</button>
+
+    <div id="toolbar-pill" class="toolbar-pill">
+      <!-- Botão Ativar Modo Desenho -->
+      <button id="btn-mode" class="btn" title="Ativar/Desativar desenho na tela">
+        <span>✎</span>
+        <span id="mode-text">Rabiscar</span>
+      </button>
+
+      <div class="divider"></div>
+
+      <!-- Ferramentas -->
+      <button id="tool-caneta" class="btn icon-only active" title="Caneta">✎</button>
+      <button id="tool-marcador" class="btn icon-only" title="Marcador">▍</button>
+      <button id="tool-seta" class="btn icon-only" title="Seta">↗</button>
+
+      <div class="divider"></div>
+
+      <!-- Cores -->
+      <div style="display: flex; gap: 6px; align-items: center;">
+        <div class="color-dot active" data-color="#ff3b5c" style="background: #ff3b5c;"></div>
+        <div class="color-dot" data-color="#f0b232" style="background: #f0b232;"></div>
+        <div class="color-dot" data-color="#23a55a" style="background: #23a55a;"></div>
+        <div class="color-dot" data-color="#5865f2" style="background: #5865f2;"></div>
+        <div class="color-dot" data-color="#a855f7" style="background: #a855f7;"></div>
+        <div class="color-dot" data-color="#ffffff" style="background: #ffffff;"></div>
+      </div>
+
+      <div class="divider"></div>
+
+      <!-- Limpar -->
+      <button id="btn-clear" class="btn icon-only" title="Limpar todos os desenhos">🗑</button>
+
+      <!-- Minimizar / Recolher -->
+      <button id="btn-collapse" class="btn icon-only" title="Recolher barra" style="opacity: 0.7;">◂</button>
+
+      <!-- Remover completamente da tela -->
+      <button id="btn-close" class="btn icon-only" title="Remover barra da tela (reative pelo DiSlackso)" style="opacity: 0.7; color: #ff5c7a;">✕</button>
+    </div>
+  </div>
+
+  <script>
+    const { ipcRenderer } = require('electron');
+    const btnMode = document.getElementById('btn-mode');
+    const modeText = document.getElementById('mode-text');
+    const btnExpand = document.getElementById('btn-expand');
+    const btnCollapse = document.getElementById('btn-collapse');
+    const btnClose = document.getElementById('btn-close');
+    const btnClear = document.getElementById('btn-clear');
+
+    let isDrawingMode = false;
+    let currentTool = 'caneta';
+    let currentColor = '#ff3b5c';
+    let currentSize = 4;
+    let autoCollapseTimer = null;
+
+    function syncState() {
+      ipcRenderer.send('overlay:sync-state', {
+        drawing: isDrawingMode,
+        tool: currentTool,
+        color: currentColor,
+        size: currentSize,
+      });
+    }
+
+    function resetTimer() {
+      if (autoCollapseTimer) clearTimeout(autoCollapseTimer);
+      if (document.body.classList.contains('collapsed')) return;
+
+      autoCollapseTimer = setTimeout(() => {
+        if (!isDrawingMode) {
+          collapse();
+        }
+      }, 10000);
+    }
+
+    function collapse() {
+      document.body.classList.add('collapsed');
+      ipcRenderer.send('overlay:resize-toolbar', { collapsed: true });
+      if (autoCollapseTimer) clearTimeout(autoCollapseTimer);
+    }
+
+    function expand() {
+      document.body.classList.remove('collapsed');
+      ipcRenderer.send('overlay:resize-toolbar', { collapsed: false });
+      resetTimer();
+    }
+
+    btnCollapse.addEventListener('click', collapse);
+    btnExpand.addEventListener('click', expand);
+
+    btnClose.addEventListener('click', () => {
+      if (isDrawingMode) setDrawingMode(false);
+      ipcRenderer.send('overlay:hide-toolbar');
+    });
+
+    function setDrawingMode(active) {
+      isDrawingMode = active;
+      if (isDrawingMode) {
+        btnMode.classList.add('active');
+        modeText.innerText = 'Desenhando';
+      } else {
+        btnMode.classList.remove('active');
+        modeText.innerText = 'Rabiscar';
+      }
+      syncState();
+      resetTimer();
+    }
+
+    btnMode.addEventListener('click', () => setDrawingMode(!isDrawingMode));
+
+    // Ferramentas
+    ['caneta', 'marcador', 'seta'].forEach((tool) => {
+      const el = document.getElementById(`tool-${tool}`);
+      if (!el) return;
+      el.addEventListener('click', () => {
+        currentTool = tool;
+        document.querySelectorAll('.btn.icon-only').forEach((b) => {
+          if (b.id.startsWith('tool-')) b.classList.remove('active');
+        });
+        el.classList.add('active');
+        if (!isDrawingMode) setDrawingMode(true);
+        else syncState();
+        resetTimer();
+      });
+    });
+
+    // Cores
+    document.querySelectorAll('.color-dot').forEach((dot) => {
+      dot.addEventListener('click', () => {
+        currentColor = dot.dataset.color;
+        document.querySelectorAll('.color-dot').forEach((d) => d.classList.remove('active'));
+        dot.classList.add('active');
+        if (!isDrawingMode) setDrawingMode(true);
+        else syncState();
+        resetTimer();
+      });
+    });
+
+    // Limpar
+    btnClear.addEventListener('click', () => {
+      ipcRenderer.send('overlay:action-clear');
+      resetTimer();
+    });
+
+    // Inicia expandido com timer de 10s
+    resetTimer();
+    syncState();
+  </script>
+</body>
+</html>

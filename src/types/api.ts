@@ -113,4 +113,6 @@ export interface AnnotStrokePatch {
   pts: AnnotPoint[];
   replace?: boolean;
   end?: boolean;
+  authorName?: string;
+  authorColor?: string;
 }

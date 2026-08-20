@@ -161,7 +161,7 @@ export function startConnection(): void {
 
   /* --------------------------------------------------------- anotação --- */
 
-  socket.on('annot:draw', (patch) => annot.applyRemote(patch));
+  socket.on('annot:draw', (patch) => annot.applyRemote(patch, (patch as { from?: string }).from));
   socket.on('annot:clear', ({ target }) => annot.clear(target, false));
 
   annot.start();

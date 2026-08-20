@@ -58,4 +58,20 @@ contextBridge.exposeInMainWorld('desktop', {
     /** Recebe cada mudança de estado do processo principal. */
     onChange: (fn) => { updateListener = fn; },
   },
+
+  /* ---- overlay de anotações sobre a tela compartilhada ---- */
+  overlay: {
+    start: () => ipcRenderer.invoke('annot:overlay:start'),
+    stop: () => ipcRenderer.invoke('annot:overlay:stop'),
+    stroke: (stroke) => ipcRenderer.invoke('annot:overlay:stroke', stroke),
+    clear: () => ipcRenderer.invoke('annot:overlay:clear'),
+    setFade: (fade) => ipcRenderer.invoke('annot:overlay:fade', fade),
+    setAuthor: (name) => ipcRenderer.invoke('annot:overlay:author', name),
+    setPosition: (pos) => ipcRenderer.invoke('annot:overlay:position', pos),
+    showToolbar: () => ipcRenderer.invoke('annot:overlay:showToolbar'),
+    hideToolbar: () => ipcRenderer.invoke('annot:overlay:hideToolbar'),
+    onActionDraw: (fn) => { ipcRenderer.on('annot:action-draw', (_e, stroke) => fn(stroke)); },
+    onActionClear: (fn) => { ipcRenderer.on('annot:action-clear', () => fn()); },
+    onToolbarHidden: (fn) => { ipcRenderer.on('annot:toolbar-hidden', (_e, hidden) => fn(hidden)); },
+  },
 });

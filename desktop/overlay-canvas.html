@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DiSlackso Canvas Overlay</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: transparent !important;
+    }
+    #canvas {
+      position: absolute;
+      inset: 0;
+      display: block;
+      width: 100vw;
+      height: 100vh;
+      pointer-events: none;
+    }
+    body.drawing #canvas {
+      pointer-events: auto;
+      cursor: crosshair;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="canvas"></canvas>
+
+  <script>
+    const { ipcRenderer } = require('electron');
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+
+    let strokes = new Map();
+    let fadeDuration = 8;
+    let isDrawingMode = false;
+    let currentTool = 'caneta';
+    let currentColor = '#ff3b5c';
+    let currentSize = 4;
+    let authorName = 'Você';
+
+    function resize() {
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      canvas.width = Math.round(window.innerWidth * dpr);
+      canvas.height = Math.round(window.innerHeight * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
+    ipcRenderer.on('overlay:fade', (_e, fade) => { fadeDuration = Number(fade) || 8; });
+    ipcRenderer.on('overlay:author', (_e, name) => { if (name) authorName = name; });
+    ipcRenderer.on('overlay:clear', () => {
+      strokes.clear();
+      ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+    });
+
+    ipcRenderer.on('overlay:set-tool-state', (_e, state) => {
+      if (!state) return;
+      if (state.tool) currentTool = state.tool;
+      if (state.color) currentColor = state.color;
+      if (state.size) currentSize = state.size;
+      if (typeof state.drawing === 'boolean') {
+        isDrawingMode = state.drawing;
+        if (isDrawingMode) document.body.classList.add('drawing');
+        else document.body.classList.remove('drawing');
+      }
+    });
+
+    ipcRenderer.on('overlay:stroke', (_e, stroke) => {
+      if (!stroke || !stroke.id) return;
+      let existing = strokes.get(stroke.id);
+      if (!existing) {
+        existing = {
+          id: stroke.id,
+          tool: stroke.tool || 'caneta',
+          color: stroke.color || '#ff3b5c',
+          size: stroke.size || 4,
+          authorName: stroke.authorName,
+          authorColor: stroke.authorColor,
+          pts: [],
+          born: performance.now(),
+        };
+        strokes.set(stroke.id, existing);
+      }
+      if (stroke.authorName) existing.authorName = stroke.authorName;
+      if (stroke.authorColor) existing.authorColor = stroke.authorColor;
+
+      if (stroke.replace) existing.pts = stroke.pts || [];
+      else existing.pts.push(...(stroke.pts || []));
+      existing.born = performance.now();
+    });
+
+    // Desenho na tela cheia
+    let activeLocalStroke = null;
+    let localPending = [];
+    let lastLocalSend = 0;
+
+    function flushLocal(end) {
+      if (!activeLocalStroke) return;
+      const isArrow = activeLocalStroke.tool === 'seta';
+      const pts = isArrow ? activeLocalStroke.pts : localPending;
+      ipcRenderer.send('overlay:action-draw', {
+        id: activeLocalStroke.id,
+        tool: activeLocalStroke.tool,
+        color: activeLocalStroke.color,
+        size: activeLocalStroke.size,
+        authorName,
+        authorColor: currentColor,
+        pts,
+        replace: isArrow,
+        end,
+      });
+      localPending = [];
+      lastLocalSend = performance.now();
+    }
+
+    window.addEventListener('pointerdown', (e) => {
+      if (!isDrawingMode || e.button !== 0) return;
+      const x = e.clientX / window.innerWidth;
+      const y = e.clientY / window.innerHeight;
+      activeLocalStroke = {
+        id: Math.random().toString(36).slice(2, 11),
+        tool: currentTool,
+        color: currentColor,
+        size: currentSize,
+        authorName,
+        authorColor: currentColor,
+        pts: [[x, y]],
+        born: performance.now(),
+      };
+      strokes.set(activeLocalStroke.id, activeLocalStroke);
+      localPending = [[x, y]];
+      lastLocalSend = 0;
+      flushLocal(false);
+    });
+
+    window.addEventListener('pointermove', (e) => {
+      if (!activeLocalStroke) return;
+      const x = e.clientX / window.innerWidth;
+      const y = e.clientY / window.innerHeight;
+      const point = [x, y];
+
+      if (activeLocalStroke.tool === 'seta') activeLocalStroke.pts[1] = point;
+      else activeLocalStroke.pts.push(point);
+
+      localPending.push(point);
+      activeLocalStroke.born = performance.now();
+      if (performance.now() - lastLocalSend > 50) flushLocal(false);
+    });
+
+    window.addEventListener('pointerup', () => {
+      if (!activeLocalStroke) return;
+      flushLocal(true);
+      activeLocalStroke = null;
+    });
+
+    const TOOL_SPEC = {
+      caneta: { width: 1, alpha: 1, cap: 'round' },
+      marcador: { width: 3.2, alpha: 0.38, cap: 'round' },
+      seta: { width: 1.2, alpha: 1, cap: 'round' },
+    };
+
+    function drawNameplate(name, color, x, y, alpha) {
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      ctx.font = '600 11px system-ui, -apple-system, sans-serif';
+      ctx.textBaseline = 'middle';
+
+      const textWidth = ctx.measureText(name).width;
+      const badgeH = 20;
+      const badgeW = textWidth + 24;
+      const bx = x + 10;
+      const by = y - 10;
+
+      ctx.fillStyle = 'rgba(23, 24, 27, 0.9)';
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 1.2;
+
+      ctx.beginPath();
+      if (typeof ctx.roundRect === 'function') {
+        ctx.roundRect(bx, by, badgeW, badgeH, 10);
+      } else {
+        ctx.rect(bx, by, badgeW, badgeH);
+      }
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.fillStyle = color;
+      ctx.font = '11px system-ui, -apple-system, sans-serif';
+      ctx.fillText('✎', bx + 6, by + badgeH / 2);
+
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '600 11px system-ui, -apple-system, sans-serif';
+      ctx.fillText(name, bx + 18, by + badgeH / 2);
+
+      ctx.restore();
+    }
+
+    function drawStroke(stroke, now, w, h) {
+      const age = (now - stroke.born) / 1000;
+      if (fadeDuration > 0 && age >= fadeDuration) {
+        strokes.delete(stroke.id);
+        return;
+      }
+
+      let alpha = 1;
+      if (fadeDuration > 0 && age > fadeDuration - 1.2) {
+        alpha = Math.max(0, (fadeDuration - age) / 1.2);
+      }
+
+      const pts = stroke.pts;
+      if (!pts || pts.length === 0) return;
+
+      const spec = TOOL_SPEC[stroke.tool] || TOOL_SPEC.caneta;
+      ctx.save();
+      ctx.lineCap = spec.cap;
+      ctx.lineJoin = 'round';
+      ctx.lineWidth = Math.max(1, (stroke.size || 4) * spec.width);
+      ctx.strokeStyle = stroke.color || '#ff3b5c';
+      ctx.fillStyle = stroke.color || '#ff3b5c';
+      ctx.globalAlpha = alpha * spec.alpha;
+
+      let lastX = 0;
+      let lastY = 0;
+
+      if (stroke.tool === 'seta') {
+        const start = pts[0];
+        const end = pts[pts.length - 1];
+        const x1 = start[0] * w;
+        const y1 = start[1] * h;
+        const x2 = end[0] * w;
+        const y2 = end[1] * h;
+        lastX = x2;
+        lastY = y2;
+
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        ctx.stroke();
+
+        const angle = Math.atan2(y2 - y1, x2 - x1);
+        const headLen = Math.max(12, stroke.size * 3.5);
+        ctx.beginPath();
+        ctx.moveTo(x2, y2);
+        ctx.lineTo(x2 - headLen * Math.cos(angle - Math.PI / 6), y2 - headLen * Math.sin(angle - Math.PI / 6));
+        ctx.lineTo(x2 - headLen * Math.cos(angle + Math.PI / 6), y2 - headLen * Math.sin(angle + Math.PI / 6));
+        ctx.closePath();
+        ctx.fill();
+      } else {
+        ctx.beginPath();
+        const p0 = pts[0];
+        ctx.moveTo(p0[0] * w, p0[1] * h);
+        lastX = p0[0] * w;
+        lastY = p0[1] * h;
+
+        if (pts.length === 1) {
+          ctx.lineTo(p0[0] * w + 0.1, p0[1] * h + 0.1);
+        } else {
+          for (let i = 1; i < pts.length; i++) {
+            const p = pts[i];
+            ctx.lineTo(p[0] * w, p[1] * h);
+            lastX = p[0] * w;
+            lastY = p[1] * h;
+          }
+        }
+        ctx.stroke();
+      }
+
+      ctx.restore();
+
+      if (stroke.authorName) {
+        const ageMs = now - stroke.born;
+        if (ageMs < 2800) {
+          const nameAlpha = Math.min(alpha, ageMs > 2000 ? (2800 - ageMs) / 800 : 1);
+          if (nameAlpha > 0.05) {
+            drawNameplate(stroke.authorName, stroke.authorColor || stroke.color, lastX, lastY, nameAlpha);
+          }
+        }
+      }
+    }
+
+    function loop() {
+      const now = performance.now();
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+
+      ctx.clearRect(0, 0, w, h);
+      for (const stroke of strokes.values()) {
+        drawStroke(stroke, now, w, h);
+      }
+
+      requestAnimationFrame(loop);
+    }
+    requestAnimationFrame(loop);
+  </script>
+</body>
+</html>

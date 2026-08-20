@@ -1,5 +1,8 @@
 import type { AnnotPoint, AnnotTool } from '@/types/api';
 import { tell } from '@/lib/socket/client';
+import { isDesktop, desktop } from '@/lib/platform';
+import { voice } from '@/lib/rtc/engine';
+import { useSession } from '@/stores/session';
 import { toNormalized } from './geometry';
 import type { Stroke } from './render';
 
@@ -40,18 +43,41 @@ export function wireDrawing(surface: DrawSurface, cfg: DrawSettings): () => void
 
   const flush = (end: boolean) => {
     if (!current) return;
+    const me = useSession.getState().me;
+    const authorName = me?.name || 'Você';
+    const authorColor = me?.color || current.color;
     const isArrow = current.tool === 'seta';
+    const pts = isArrow ? current.pts : pending;
+
     tell('annot:draw', {
       target: cfg.wireTarget(surface.targetId),
       id: current.id,
       tool: current.tool,
       color: current.color,
       size: current.size,
+      authorName,
+      authorColor,
       // Na seta mandamos os dois pontos sempre; é barato e evita remontagem.
-      pts: isArrow ? current.pts : pending,
+      pts,
       replace: isArrow,
       end,
     });
+
+    // Se estiver desenhando na própria tela transmitida, projeta no overlay desktop local
+    if (surface.targetId === 'local' && isDesktop() && voice.screen.active) {
+      void desktop()?.overlay.stroke({
+        id: current.id,
+        tool: current.tool,
+        color: current.color,
+        size: current.size,
+        authorName,
+        authorColor,
+        pts,
+        replace: isArrow,
+        end,
+      });
+    }
+
     pending = [];
     lastSend = performance.now();
   };
@@ -65,12 +91,15 @@ export function wireDrawing(surface: DrawSurface, cfg: DrawSettings): () => void
       /* alguns dispositivos recusam a captura; o desenho ainda funciona */
     }
 
+    const me = useSession.getState().me;
     const point = toNormalized(host, surface.video(), e.clientX, e.clientY);
     current = {
       id: Math.random().toString(36).slice(2, 11),
       tool: cfg.tool(),
       color: cfg.color(),
       size: cfg.size(),
+      authorName: me?.name || 'Você',
+      authorColor: me?.color || cfg.color(),
       pts: [point],
       born: performance.now(),
     };
