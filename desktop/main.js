@@ -121,6 +121,13 @@ function createWindow() {
     minWidth: 940,
     minHeight: 600,
     show: false,
+    // No Windows o ícone vem embutido no .exe (electron-builder cuida disso
+    // via build.win.icon). No Linux não existe esse mecanismo — sem "icon"
+    // aqui a janela fica sem ícone válido e o WM mostra um X quebrado na
+    // barra de tarefas / alt-tab / decoração.
+    ...(process.platform === 'linux'
+      ? { icon: path.join(__dirname, '..', 'build', 'icon.png') }
+      : {}),
     transparent: !!config.transparency,
     backgroundColor: config.transparency ? '#00000000' : '#1a1b1e',
     ...(config.transparency && process.platform === 'win32' ? { backgroundMaterial: 'acrylic' } : {}),
@@ -322,7 +329,7 @@ function installDisplayMediaHandler() {
       callback(includeAudio ? { video: source, audio: 'loopback' } : { video: source });
     } catch (err) {
       console.error('[captura]', err);
-      try { callback(null); } catch {}
+      try { callback(null); } catch { }
     }
   }, { useSystemPicker: false });
 }
@@ -403,7 +410,7 @@ autoUpdater.on('error', (err) => {
     // O 404 aqui quase sempre é repositório privado: sem autenticação o
     // GitHub responde 404 em vez de 403, para não revelar que ele existe.
     amigavel = 'Não consegui ler os releases no GitHub. Se o repositório for privado, '
-             + 'a atualização automática não funciona — ele precisa ser público.';
+      + 'a atualização automática não funciona — ele precisa ser público.';
   } else if (/net::|ENOTFOUND|EAI_AGAIN|ETIMEDOUT|ECONNRESET/.test(msg)) {
     amigavel = 'Sem conexão com o GitHub. Tente de novo mais tarde.';
   } else if (/sha512|checksum/i.test(msg)) {

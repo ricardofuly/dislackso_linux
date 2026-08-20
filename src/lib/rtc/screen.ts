@@ -17,7 +17,7 @@ function constraintsFor(q: QualityPreset): MediaStreamConstraints {
     audio: {
       channelCount: 2,
       sampleRate: 48000,
-      echoCancellation: false,
+      echoCancellation: true,
       noiseSuppression: false,
       autoGainControl: false,
       suppressLocalAudioPlayback: false,
