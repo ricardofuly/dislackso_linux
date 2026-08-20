@@ -62,6 +62,8 @@ export interface SettingsValues {
   annotFade: number;
   annotColor: string;
   annotSize: number;
+  overlayPosition: 'top-right' | 'top-left' | 'top-center' | 'bottom-center';
+  overlayToolbarVisible: boolean;
 }
 
 export const DEFAULT_SETTINGS: SettingsValues = {
@@ -74,6 +76,7 @@ export const DEFAULT_SETTINGS: SettingsValues = {
   muteKey: 'KeyM', screenKey: 'KeyS', pttKey: 'Space', annotKey: 'KeyP',
   autoUpdate: true, feedbackSounds: true,
   annotAllow: true, annotFade: 8, annotColor: '#ff3b5c', annotSize: 4,
+  overlayPosition: 'top-right', overlayToolbarVisible: true,
 };
 
 interface SettingsStore extends SettingsValues {

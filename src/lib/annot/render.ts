@@ -10,6 +10,8 @@ export interface Stroke {
   pts: AnnotPoint[];
   /** `performance.now()` do último ponto — é daqui que sai o desaparecimento. */
   born: number;
+  authorName?: string;
+  authorColor?: string;
 }
 
 /** Como cada ferramenta se comporta no traço. */
@@ -40,6 +42,7 @@ export function paintStroke(
   stroke: Stroke,
   rect: ContentRect,
   alpha: number,
+  now = performance.now(),
 ): void {
   const spec = TOOL_SPEC[stroke.tool] ?? TOOL_SPEC.caneta;
   ctx.globalAlpha = alpha * spec.alpha;
@@ -51,6 +54,65 @@ export function paintStroke(
 
   if (stroke.tool === 'seta') drawArrow(ctx, stroke.pts, rect);
   else drawFreehand(ctx, stroke.pts, rect);
+
+  // Nameplate com ícone de caneta e nome de quem está desenhando
+  if (stroke.authorName && stroke.pts.length > 0) {
+    const ageMs = now - stroke.born;
+    if (ageMs < 2800) {
+      const nameAlpha = Math.min(alpha, ageMs > 2000 ? (2800 - ageMs) / 800 : 1);
+      if (nameAlpha > 0.05) {
+        const lastPt = stroke.pts[stroke.pts.length - 1]!;
+        const [px, py] = toPixels(rect, lastPt);
+        drawNameplate(ctx, stroke.authorName, stroke.authorColor || stroke.color, px, py, nameAlpha);
+      }
+    }
+  }
+}
+
+function drawNameplate(
+  ctx: CanvasRenderingContext2D,
+  name: string,
+  color: string,
+  x: number,
+  y: number,
+  alpha: number,
+): void {
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.font = '600 11px system-ui, -apple-system, sans-serif';
+  ctx.textBaseline = 'middle';
+
+  const textWidth = ctx.measureText(name).width;
+  const badgeH = 20;
+  const badgeW = textWidth + 24;
+  const bx = x + 10;
+  const by = y - 10;
+
+  // Fundo com cantos arredondados
+  ctx.fillStyle = 'rgba(23, 24, 27, 0.9)';
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 1.2;
+
+  ctx.beginPath();
+  if (typeof ctx.roundRect === 'function') {
+    ctx.roundRect(bx, by, badgeW, badgeH, 10);
+  } else {
+    (ctx as unknown as { rect: (x: number, y: number, w: number, h: number) => void }).rect(bx, by, badgeW, badgeH);
+  }
+  ctx.fill();
+  ctx.stroke();
+
+  // Ícone de caneta
+  ctx.fillStyle = color;
+  ctx.font = '11px system-ui, -apple-system, sans-serif';
+  ctx.fillText('✎', bx + 6, by + badgeH / 2);
+
+  // Nome do autor
+  ctx.fillStyle = '#ffffff';
+  ctx.font = '600 11px system-ui, -apple-system, sans-serif';
+  ctx.fillText(name, bx + 18, by + badgeH / 2);
+
+  ctx.restore();
 }
 
 function drawFreehand(ctx: CanvasRenderingContext2D, pts: AnnotPoint[], rect: ContentRect): void {

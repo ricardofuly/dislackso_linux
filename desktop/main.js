@@ -21,6 +21,18 @@ const { spawn } = require('child_process');
 const { autoUpdater } = require('electron-updater');
 const appProtocol = require('./app-protocol');
 const { migrateLegacyStorage } = require('./migrate-storage');
+const {
+  setMainWindowGetter,
+  openOverlayWindow,
+  closeOverlayWindow,
+  setOverlayPosition,
+  showOverlayToolbar,
+  hideOverlayToolbar,
+  sendStrokeToOverlay,
+  clearOverlay,
+  setOverlayFade,
+  setOverlayAuthor,
+} = require('./overlay-window');
 
 /** A interface compilada para o desktop (npm run build:desktop). */
 const BUNDLE_DIR = path.join(__dirname, '..', 'dist', 'desktop');
@@ -171,6 +183,7 @@ function createWindow() {
     if (input.control && input.alt && input.shift && input.key.toLowerCase() === 'd') openDevWindow();
   });
 
+  setMainWindowGetter(() => win);
   goHome();
 }
 
@@ -591,6 +604,53 @@ ipcMain.handle('update:install', () => {
 ipcMain.handle('dialog:pickFolder', async () => {
   const res = await dialog.showOpenDialog(win, { properties: ['openDirectory'] });
   return res.canceled ? null : res.filePaths[0];
+});
+
+/* ------------------------------------------- overlay de anotações tela -- */
+
+ipcMain.handle('annot:overlay:start', () => {
+  openOverlayWindow();
+  return true;
+});
+
+ipcMain.handle('annot:overlay:stop', () => {
+  closeOverlayWindow();
+  return true;
+});
+
+ipcMain.handle('annot:overlay:stroke', (_e, stroke) => {
+  sendStrokeToOverlay(stroke);
+  return true;
+});
+
+ipcMain.handle('annot:overlay:clear', () => {
+  clearOverlay();
+  return true;
+});
+
+ipcMain.handle('annot:overlay:fade', (_e, fade) => {
+  setOverlayFade(fade);
+  return true;
+});
+
+ipcMain.handle('annot:overlay:author', (_e, name) => {
+  setOverlayAuthor(name);
+  return true;
+});
+
+ipcMain.handle('annot:overlay:position', (_e, pos) => {
+  setOverlayPosition(pos);
+  return true;
+});
+
+ipcMain.handle('annot:overlay:showToolbar', () => {
+  showOverlayToolbar();
+  return true;
+});
+
+ipcMain.handle('annot:overlay:hideToolbar', () => {
+  hideOverlayToolbar();
+  return true;
 });
 
 /* -------------------------------------------------------------- ciclo -- */
