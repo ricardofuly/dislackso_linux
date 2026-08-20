@@ -21,6 +21,18 @@ const { spawn } = require('child_process');
 const { autoUpdater } = require('electron-updater');
 const appProtocol = require('./app-protocol');
 const { migrateLegacyStorage } = require('./migrate-storage');
+const {
+  setMainWindowGetter,
+  openOverlayWindow,
+  closeOverlayWindow,
+  setOverlayPosition,
+  showOverlayToolbar,
+  hideOverlayToolbar,
+  sendStrokeToOverlay,
+  clearOverlay,
+  setOverlayFade,
+  setOverlayAuthor,
+} = require('./overlay-window');
 
 /** A interface compilada para o desktop (npm run build:desktop). */
 const BUNDLE_DIR = path.join(__dirname, '..', 'dist', 'desktop');
@@ -121,6 +133,13 @@ function createWindow() {
     minWidth: 940,
     minHeight: 600,
     show: false,
+    // No Windows o ícone vem embutido no .exe (electron-builder cuida disso
+    // via build.win.icon). No Linux não existe esse mecanismo — sem "icon"
+    // aqui a janela fica sem ícone válido e o WM mostra um X quebrado na
+    // barra de tarefas / alt-tab / decoração.
+    ...(process.platform === 'linux'
+      ? { icon: path.join(__dirname, '..', 'build', 'icon.png') }
+      : {}),
     transparent: !!config.transparency,
     backgroundColor: config.transparency ? '#00000000' : '#1a1b1e',
     ...(config.transparency && process.platform === 'win32' ? { backgroundMaterial: 'acrylic' } : {}),
@@ -171,6 +190,7 @@ function createWindow() {
     if (input.control && input.alt && input.shift && input.key.toLowerCase() === 'd') openDevWindow();
   });
 
+  setMainWindowGetter(() => win);
   goHome();
 }
 
@@ -322,7 +342,7 @@ function installDisplayMediaHandler() {
       callback(includeAudio ? { video: source, audio: 'loopback' } : { video: source });
     } catch (err) {
       console.error('[captura]', err);
-      try { callback(null); } catch {}
+      try { callback(null); } catch { }
     }
   }, { useSystemPicker: false });
 }
@@ -403,7 +423,7 @@ autoUpdater.on('error', (err) => {
     // O 404 aqui quase sempre é repositório privado: sem autenticação o
     // GitHub responde 404 em vez de 403, para não revelar que ele existe.
     amigavel = 'Não consegui ler os releases no GitHub. Se o repositório for privado, '
-             + 'a atualização automática não funciona — ele precisa ser público.';
+      + 'a atualização automática não funciona — ele precisa ser público.';
   } else if (/net::|ENOTFOUND|EAI_AGAIN|ETIMEDOUT|ECONNRESET/.test(msg)) {
     amigavel = 'Sem conexão com o GitHub. Tente de novo mais tarde.';
   } else if (/sha512|checksum/i.test(msg)) {
@@ -490,7 +510,7 @@ ipcMain.handle('dev:clearLocalData', async () => {
 });
 
 ipcMain.handle('shell:openExternal', (_e, url) => {
-  if (/^https?:\/\//i.test(String(url))) shell.openExternal(url);
+  if (/^(?:https?:\/\/|mailto:)/i.test(String(url))) shell.openExternal(url);
 });
 
 /** Traz a janela principal pra frente — usado quando chega um aviso de admin com "forçar foco". */
@@ -591,6 +611,53 @@ ipcMain.handle('update:install', () => {
 ipcMain.handle('dialog:pickFolder', async () => {
   const res = await dialog.showOpenDialog(win, { properties: ['openDirectory'] });
   return res.canceled ? null : res.filePaths[0];
+});
+
+/* ------------------------------------------- overlay de anotações tela -- */
+
+ipcMain.handle('annot:overlay:start', () => {
+  openOverlayWindow();
+  return true;
+});
+
+ipcMain.handle('annot:overlay:stop', () => {
+  closeOverlayWindow();
+  return true;
+});
+
+ipcMain.handle('annot:overlay:stroke', (_e, stroke) => {
+  sendStrokeToOverlay(stroke);
+  return true;
+});
+
+ipcMain.handle('annot:overlay:clear', () => {
+  clearOverlay();
+  return true;
+});
+
+ipcMain.handle('annot:overlay:fade', (_e, fade) => {
+  setOverlayFade(fade);
+  return true;
+});
+
+ipcMain.handle('annot:overlay:author', (_e, name) => {
+  setOverlayAuthor(name);
+  return true;
+});
+
+ipcMain.handle('annot:overlay:position', (_e, pos) => {
+  setOverlayPosition(pos);
+  return true;
+});
+
+ipcMain.handle('annot:overlay:showToolbar', () => {
+  showOverlayToolbar();
+  return true;
+});
+
+ipcMain.handle('annot:overlay:hideToolbar', () => {
+  hideOverlayToolbar();
+  return true;
 });
 
 /* -------------------------------------------------------------- ciclo -- */

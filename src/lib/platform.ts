@@ -79,6 +79,20 @@ export interface DesktopBridge {
     install(): Promise<void>;
     onChange(fn: (state: UpdateState) => void): void;
   };
+  overlay: {
+    start(): Promise<void>;
+    stop(): Promise<void>;
+    stroke(stroke: unknown): Promise<void>;
+    clear(): Promise<void>;
+    setFade(fadeSeconds: number): Promise<void>;
+    setAuthor(name: string): Promise<void>;
+    setPosition(position: string): Promise<void>;
+    showToolbar(): Promise<void>;
+    hideToolbar(): Promise<void>;
+    onActionDraw(fn: (stroke: unknown) => void): void;
+    onActionClear(fn: () => void): void;
+    onToolbarHidden(fn: (hidden: boolean) => void): void;
+  };
 }
 
 declare global {

@@ -1,6 +1,6 @@
 {
   "name": "dislackso",
-  "version": "4.1.0",
+  "version": "4.2.0",
   "private": true,
   "description": "Servidores privados, compartilhamento de tela em alta resolucao e anotacoes ao vivo",
   "author": "Spike",
@@ -97,7 +97,10 @@
       "category": "Network",
       "synopsis": "Servidores privados, compartilhamento de tela em alta resolução e anotação ao vivo",
       "artifactName": "${productName}-${version}.${ext}",
-      "maintainer": "Ricardo Fuly lricardofs@gmail.com"
+      "maintainer": "Ricardo Fuly lricardofs@gmail.com",
+      "desktop": {
+        "StartupWMClass": "dislackso"
+      }
     },
     "mac": {
       "target": [

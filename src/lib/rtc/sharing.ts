@@ -1,4 +1,5 @@
 import { tell } from '@/lib/socket/client';
+import { annot } from '@/lib/annot/engine';
 import { CongestionWatch } from './congestion';
 import { PreviewLoop } from './preview';
 import type { QualityPreset } from './quality';
@@ -63,12 +64,14 @@ export class ScreenSharing {
     this.congestion.start();
     this.preview.start(result.stream);
     this.deps.onStart();
+    annot.startOverlay();
   }
 
   stop(): void {
     const stream = this.stream;
     if (!stream) return;
 
+    annot.stopOverlay();
     this.preview.stop();
     this.congestion.stop();
     this.deps.mesh.removeScreenEverywhere();
@@ -102,6 +105,7 @@ export class ScreenSharing {
 
   /** Encerra tudo sem avisar ninguém — usado ao sair da sala. */
   dispose(): void {
+    annot.stopOverlay();
     this.preview.stop();
     this.congestion.stop();
     for (const track of this.stream?.getTracks() ?? []) track.stop();

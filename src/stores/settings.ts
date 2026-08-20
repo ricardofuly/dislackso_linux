@@ -62,6 +62,8 @@ export interface SettingsValues {
   annotFade: number;
   annotColor: string;
   annotSize: number;
+  overlayPosition: 'top-right' | 'top-left' | 'top-center' | 'bottom-center';
+  overlayToolbarVisible: boolean;
 }
 
 export const DEFAULT_SETTINGS: SettingsValues = {
@@ -70,10 +72,11 @@ export const DEFAULT_SETTINGS: SettingsValues = {
   quality: '1080p60', contentHint: 'motion', autoFocus: true, selfPreview: true, shareSystemAudio: true,
   micId: '', speakerId: '', micGain: 1, rnnoise: true,
   echoCancellation: true, noiseSuppression: true, autoGainControl: true,
-  micMode: 'voz', duckVoiceOnShare: 'duck25', micMuted: false, soundOff: false,
+  micMode: 'voz', duckVoiceOnShare: 'off', micMuted: false, soundOff: false,
   muteKey: 'KeyM', screenKey: 'KeyS', pttKey: 'Space', annotKey: 'KeyP',
   autoUpdate: true, feedbackSounds: true,
   annotAllow: true, annotFade: 8, annotColor: '#ff3b5c', annotSize: 4,
+  overlayPosition: 'top-right', overlayToolbarVisible: true,
 };
 
 interface SettingsStore extends SettingsValues {
